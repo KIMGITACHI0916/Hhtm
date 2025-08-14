@@ -1,98 +1,62 @@
-
-import os, sys, io, time, requests
-from google.oauth2 import service_account
+import os
+import requests
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
+from googleapiclient.http import MediaFileUpload
+from google.oauth2 import service_account
 
-# --------- CONFIG ---------
-# 1) Provide a list of part URLs (HTTP/HTTPS) accessible from Railway.
-#    Tip: upload the .part files to GitHub Releases, pixeldrain, or your own host.
+# 1️⃣ Replace "YOUR_HOST_URL" with the actual domain/path where your .part files are hosted
+# Make sure these are DIRECT download links (not HTML pages)
 PART_URLS = [
-    # "https://your-host/path/libil2cpp_patched_1mb.part001",
-    # "https://your-host/path/libil2cpp_patched_1mb.part002",
-    # ...
+    "https://YOUR_HOST_URL/libil2cpp_patched.part001",
+    "https://YOUR_HOST_URL/libil2cpp_patched.part002",
+    "https://YOUR_HOST_URL/libil2cpp_patched.part003",
+    "https://YOUR_HOST_URL/libil2cpp_patched.part004",
+    "https://YOUR_HOST_URL/libil2cpp_patched.part005",
+    "https://YOUR_HOST_URL/libil2cpp_patched.part006",
+    "https://YOUR_HOST_URL/libil2cpp_patched.part007",
+    "https://YOUR_HOST_URL/libil2cpp_patched.part008",
+    "https://YOUR_HOST_URL/libil2cpp_patched.part009",
+    "https://YOUR_HOST_URL/libil2cpp_patched.part010",
+    "https://YOUR_HOST_URL/libil2cpp_patched.part011",
+    "https://YOUR_HOST_URL/libil2cpp_patched.part012",
+    "https://YOUR_HOST_URL/libil2cpp_patched.part013",
+    "https://YOUR_HOST_URL/libil2cpp_patched.part014",
+    "https://YOUR_HOST_URL/libil2cpp_patched.part015",
+    "https://YOUR_HOST_URL/libil2cpp_patched.part016"
 ]
 
-# 2) Google Drive folder ID where the final file should be saved.
-DRIVE_FOLDER_ID = os.getenv("DRIVE_FOLDER_ID", "")
-
-# 3) Service account credentials: set env var SERVICE_ACCOUNT_JSON with the JSON content,
-#    or mount a file at ./service_account.json.
-SERVICE_ACCOUNT_JSON = os.getenv("SERVICE_ACCOUNT_JSON", "")
-SERVICE_ACCOUNT_PATH = os.getenv("SERVICE_ACCOUNT_PATH", "service_account.json")
-
-# 4) Output filename in Drive
 OUTPUT_FILENAME = os.getenv("OUTPUT_FILENAME", "libil2cpp_patched.so")
+SERVICE_ACCOUNT_JSON = os.getenv("SERVICE_ACCOUNT_JSON")
+DRIVE_FOLDER_ID = os.getenv("DRIVE_FOLDER_ID", None)
 
-CHUNK_TIMEOUT = 120
+if not PART_URLS or "YOUR_HOST_URL" in PART_URLS[0]:
+    raise SystemExit("ERROR: PART_URLS not updated with real download links.")
 
-def get_service():
-    creds = None
-    if SERVICE_ACCOUNT_JSON:
-        import json, tempfile
-        data = json.loads(SERVICE_ACCOUNT_JSON)
-        with tempfile.NamedTemporaryFile("w", delete=False) as tf:
-            json.dump(data, tf)
-            tf.flush()
-            creds = service_account.Credentials.from_service_account_file(tf.name, scopes=["https://www.googleapis.com/auth/drive.file"])
-    elif os.path.exists(SERVICE_ACCOUNT_PATH):
-        creds = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_PATH, scopes=["https://www.googleapis.com/auth/drive.file"])
-    else:
-        raise RuntimeError("No service account credentials provided. Set SERVICE_ACCOUNT_JSON or provide service_account.json file.")
-    return build("drive", "v3", credentials=creds, cache_discovery=False)
+# 2️⃣ Download and merge parts
+print(f"Downloading {len(PART_URLS)} parts...")
+merged_data = bytearray()
+for i, url in enumerate(PART_URLS, start=1):
+    print(f"Downloading part {i}/{len(PART_URLS)}: {url}")
+    r = requests.get(url, stream=True)
+    r.raise_for_status()
+    for chunk in r.iter_content(chunk_size=8192):
+        merged_data.extend(chunk)
 
-def download_parts(urls, out_path):
-    os.makedirs("parts", exist_ok=True)
-    part_paths = []
-    for idx, url in enumerate(urls, 1):
-        name = f"parts/part{idx:03d}"
-        print(f"[{idx}/{len(urls)}] Downloading {url} -> {name}", flush=True)
-        with requests.get(url, stream=True, timeout=CHUNK_TIMEOUT) as r:
-            r.raise_for_status()
-            with open(name, "wb") as f:
-                for chunk in r.iter_content(chunk_size=1<<20):
-                    if chunk:
-                        f.write(chunk)
-        part_paths.append(name)
+with open(OUTPUT_FILENAME, "wb") as f:
+    f.write(merged_data)
+print(f"Merged file saved as {OUTPUT_FILENAME} ({len(merged_data)} bytes)")
 
-    print("Merging parts...", flush=True)
-    with open(out_path, "wb") as out:
-        for p in part_paths:
-            with open(p, "rb") as pf:
-                while True:
-                    b = pf.read(1<<20)
-                    if not b:
-                        break
-                    out.write(b)
-    return out_path
+# 3️⃣ Upload to Google Drive
+print("Uploading to Google Drive...")
+creds = service_account.Credentials.from_service_account_info(
+    eval(SERVICE_ACCOUNT_JSON), scopes=["https://www.googleapis.com/auth/drive"]
+)
+service = build("drive", "v3", credentials=creds)
 
-def upload_to_drive(service, file_path, folder_id, filename):
-    file_metadata = {
-        "name": filename,
-        "parents": [folder_id] if folder_id else None
-    }
-    media = MediaIoBaseUpload(io.FileIO(file_path, "rb"), mimetype="application/octet-stream", resumable=True)
-    request = service.files().create(body=file_metadata, media_body=media, fields="id, name")
-    response = None
-    while response is None:
-        status, response = request.next_chunk()
-        if status:
-            print(f"Uploaded {int(status.progress() * 100)}%")
-    print("Upload complete. File ID:", response.get("id"))
-    return response.get("id")
+file_metadata = {"name": OUTPUT_FILENAME}
+if DRIVE_FOLDER_ID:
+    file_metadata["parents"] = [DRIVE_FOLDER_ID]
 
-def main():
-    if not PART_URLS:
-        print("ERROR: PART_URLS is empty. Edit pipeline_to_drive.py to add your part URLs.", file=sys.stderr)
-        sys.exit(1)
-    target_local = "libil2cpp_patched.so"
-    print("Starting download/merge pipeline...", flush=True)
-    merged = download_parts(PART_URLS, target_local)
-    print("Merged file size:", os.path.getsize(merged), "bytes", flush=True)
-
-    service = get_service()
-    file_id = upload_to_drive(service, merged, DRIVE_FOLDER_ID, OUTPUT_FILENAME)
-    print("Drive file ID:", file_id)
-
-if __name__ == "__main__":
-    main()
+media = MediaFileUpload(OUTPUT_FILENAME, resumable=True)
+file = service.files().create(body=file_metadata, media_body=media, fields="id").execute()
+print(f"✅ Uploaded to Google Drive with file ID: {file.get('id')}")
