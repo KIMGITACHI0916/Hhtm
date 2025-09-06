@@ -10,7 +10,7 @@ from scheduler import start_scheduler
 from scheduler import drop_waifu  # import at top
 
 
-TOKEN = "YOUR_BOT_TOKEN"   # 🚨 Replace with your actual token, don’t share it publicly!
+TOKEN = "8408998512:AAFELhAxHrIH6Llv-lvA1Nrg_mHr-8nXHBM"   # 🚨 Replace with your actual token, don’t share it publicly!
 
 # this will be set dynamically after /start in a group
 GROUP_CHAT_ID = None  
