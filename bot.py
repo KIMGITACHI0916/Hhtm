@@ -6,7 +6,7 @@ from commands.info import handle_info
 from commands.leaderboard import handle_leaderboard
 from scheduler import start_scheduler
 
-TOKEN = "8408998512:AAGcbJjy_S_lmkXNDClnt6fAmPv2yiXaGI8"
+TOKEN = "8408998512:AAFELhAxHrIH6Llv-lvA1Nrg_mHr-8nXHBM"  
 GROUP_CHAT_ID = -4968919749  # Replace with your group chat ID
 
 async def start(update, context):
