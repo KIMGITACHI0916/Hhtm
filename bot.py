@@ -16,7 +16,7 @@ async def start(update, context):
 
 def main():
     init_db()
-    app = ApplicationBuilder().token(token).build()
+    app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("collect", handle_collect))
