@@ -1,3 +1,4 @@
+import asyncio
 from telegram.ext import ApplicationBuilder, CommandHandler
 from db.models import init_db, add_user
 from commands.collect import handle_collect
