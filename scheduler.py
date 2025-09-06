@@ -1,11 +1,11 @@
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-import asyncio
-from telegram import Bot
+# scheduler.py
+from telegram.ext import Application
 from utils.waifu_picker import pick_random_waifu
+import asyncio
 
 current_waifu = None
 
-async def drop_waifu(bot: Bot, chat_id: int):
+async def drop_waifu(bot, chat_id):
     global current_waifu
     try:
         current_waifu = pick_random_waifu()
@@ -17,8 +17,8 @@ async def drop_waifu(bot: Bot, chat_id: int):
     except Exception as e:
         print(f"Waifu drop failed: {e}")
 
-def start_scheduler(bot: Bot, chat_id: int):
-    scheduler = AsyncIOScheduler()
-    scheduler.add_job(lambda: asyncio.create_task(drop_waifu(bot, chat_id)), 'interval', seconds=30)
-    scheduler.start()
-    
+async def start_scheduler(app: Application, chat_id: int):
+    """Schedules waifu drops using the running event loop."""
+    while True:
+        await drop_waifu(app.bot, chat_id)
+        await asyncio.sleep(30)  # drop every 30 seconds
