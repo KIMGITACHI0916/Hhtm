@@ -1,5 +1,5 @@
 import asyncio
-from telegram.ext import ApplicationBuilder, CommandHandler
+from telegram.ext import ApplicationBuilder, CommandHandler, Application
 from db.models import init_db, add_user
 from commands.collect import handle_collect
 from commands.harem import handle_harem
@@ -7,17 +7,28 @@ from commands.info import handle_info
 from commands.leaderboard import handle_leaderboard
 from scheduler import start_scheduler
 
-TOKEN = "8408998512:AAFELhAxHrIH6Llv-lvA1Nrg_mHr-8nXHBM"  
+TOKEN = "8408998512:AAFELhAxHrIH6Llv-lvA1Nrg_mHr-8nXHBM"
 GROUP_CHAT_ID = -4968919749  # Replace with your group chat ID
 
 async def start(update, context):
     user = update.effective_user
     add_user(user.id, user.username)
-    await update.message.reply_text("Welcome to WaifuBot! Waifus will drop randomly. Use /collect to grab them!")
+    await update.message.reply_text(
+        "Welcome to WaifuBot! Waifus will drop randomly. Use /collect to grab them!"
+    )
+
+async def post_init(app: Application):
+    # Launch the scheduler inside the running event loop
+    asyncio.create_task(start_scheduler(app, GROUP_CHAT_ID))
 
 def main():
     init_db()
-    app = ApplicationBuilder().token(TOKEN).build()
+    app = (
+        ApplicationBuilder()
+        .token(TOKEN)
+        .post_init(post_init)
+        .build()
+    )
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("collect", handle_collect))
@@ -25,13 +36,8 @@ def main():
     app.add_handler(CommandHandler("info", handle_info))
     app.add_handler(CommandHandler("top", handle_leaderboard))
 
-    # Start scheduler in background
-    asyncio.create_task(start_scheduler(app, GROUP_CHAT_ID))
-
     app.run_polling()
 
 if __name__ == "__main__":
     main()
-
-
-
+    
