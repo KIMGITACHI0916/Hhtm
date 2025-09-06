@@ -24,9 +24,13 @@ def main():
     app.add_handler(CommandHandler("info", handle_info))
     app.add_handler(CommandHandler("top", handle_leaderboard))
 
-    start_scheduler(app.bot, GROUP_CHAT_ID)
+    # Start scheduler in background
+    asyncio.create_task(start_scheduler(app, GROUP_CHAT_ID))
 
     app.run_polling()
 
 if __name__ == "__main__":
     main()
+
+
+
