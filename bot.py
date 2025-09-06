@@ -5,11 +5,12 @@ from commands.collect import handle_collect
 from commands.harem import handle_harem
 from commands.info import handle_info
 from commands.leaderboard import handle_leaderboard
+from commands.upload import get_upload_handler   # ✅ NEW
 from scheduler import start_scheduler
 from scheduler import drop_waifu  # import at top
 
 
-TOKEN = "8408998512:AAFELhAxHrIH6Llv-lvA1Nrg_mHr-8nXHBM"
+TOKEN = "YOUR_BOT_TOKEN"   # 🚨 Replace with your actual token, don’t share it publicly!
 
 # this will be set dynamically after /start in a group
 GROUP_CHAT_ID = None  
@@ -40,8 +41,11 @@ def main():
     app.add_handler(CommandHandler("info", handle_info))
     app.add_handler(CommandHandler("top", handle_leaderboard))
     app.add_handler(CommandHandler("drop", lambda update, context: asyncio.create_task(drop_waifu(app.bot, update.effective_chat.id))))
-    
+    app.add_handler(get_upload_handler())   # ✅ Register /upload
+
+    print("✅ Bot is running...")
     app.run_polling()
 
 if __name__ == "__main__":
     main()
+    
