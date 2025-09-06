@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Rem",
+    "image": "https://example.com/rem.jpg",
+    "rarity": "Rare",
+    "desc": "From Re:Zero",
+    "tags": ["anime", "maid"]
+  },
+  {
+    "name": "Zero Two",
+    "image": "https://example.com/zerotwo.jpg",
+    "rarity": "Legendary",
+    "desc": "From Darling in the Franxx",
+    "tags": ["anime", "pilot"]
+  }
+]
