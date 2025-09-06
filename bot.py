@@ -6,8 +6,8 @@ from commands.info import handle_info
 from commands.leaderboard import handle_leaderboard
 from scheduler import start_scheduler
 
-TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
-GROUP_CHAT_ID = -1001234567890  # Replace with your group chat ID
+TOKEN = "8408998512:AAGcbJjy_S_lmkXNDClnt6fAmPv2yiXaGI8"
+GROUP_CHAT_ID = -4968919749  # Replace with your group chat ID
 
 async def start(update, context):
     user = update.effective_user
@@ -16,7 +16,7 @@ async def start(update, context):
 
 def main():
     init_db()
-    app = ApplicationBuilder().token(TOKEN).build()
+    app = ApplicationBuilder().token(token).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("collect", handle_collect))
