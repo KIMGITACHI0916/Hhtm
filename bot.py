@@ -8,18 +8,25 @@ from commands.leaderboard import handle_leaderboard
 from scheduler import start_scheduler
 
 TOKEN = "8408998512:AAFELhAxHrIH6Llv-lvA1Nrg_mHr-8nXHBM"
-GROUP_CHAT_ID = -4968919749  # Replace with your group chat ID
+
+# this will be set dynamically after /start in a group
+GROUP_CHAT_ID = None  
 
 async def start(update, context):
+    global GROUP_CHAT_ID
     user = update.effective_user
+    chat = update.effective_chat
+
     add_user(user.id, user.username)
     await update.message.reply_text(
         "Welcome to WaifuBot! Waifus will drop randomly. Use /collect to grab them!"
     )
 
-async def post_init(app: Application):
-    # Launch the scheduler inside the running event loop
-    asyncio.create_task(start_scheduler(app, GROUP_CHAT_ID))
+    # ✅ if the bot is started inside a group, save its ID
+    if chat.type in ["group", "supergroup"]:
+        GROUP_CHAT_ID = chat.id
+        print(f"[INFO] Scheduler activated in group {GROUP_CHAT_ID}")
+        asyncio.create_task(start_scheduler(context.application, GROUP_CHAT_ID))
 
 def main():
     init_db()
