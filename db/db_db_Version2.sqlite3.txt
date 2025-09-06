@@ -1,0 +1,3 @@
+# This is a binary SQLite database file.
+# You should run bot.py once to automatically generate this file.
+# Do not manually create or edit this file; let the bot and init_db() function handle it.
