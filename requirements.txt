@@ -1,8 +1,6 @@
 python-telegram-bot==20.6
 APScheduler==3.10.4
 httpx
-pymongo
-pymongo[srv]
-pymongo>=4.3
+pymongo[srv]>=4.3
 dnspython>=2.3
 certifi>=2023.7
