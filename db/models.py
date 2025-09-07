@@ -1,10 +1,12 @@
 import os
 from pymongo import MongoClient
+import certifi
 
 MONGO_URL = os.getenv("MONGO_URL")
 DB_NAME = "waifubot"
 
-client = MongoClient(MONGO_URL)
+# Fix SSL handshake issue
+client = MongoClient(MONGO_URL, tls=True, tlsCAFile=certifi.where())
 db = client[DB_NAME]
 
 users = db["users"]
