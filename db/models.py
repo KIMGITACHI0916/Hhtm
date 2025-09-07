@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 MONGO_URL = os.getenv("MONGO_URL")
-DB_NAME = "waifubot"
+DB_NAME = os.getenv("DB_NAME", "waifubot")
 
 # Connect to MongoDB Atlas with proper TLS
 client = MongoClient(MONGO_URL, tls=True, tlsCAFile=certifi.where())
@@ -25,23 +25,24 @@ def init_db():
     active_drops.create_index("chat_id", unique=True)
     print("[INFO] Database initialized.")
 
-# Add user
+# Add user safely
 def add_user(user_id: int, username: str):
-    users.update_one(
-        {"user_id": user_id},
-        {
-            "$setOnInsert": {"user_id": user_id, "username": username, "harem": []},
-            "$set": {"username": username},
-        },
-        upsert=True,
-    )
+    user = users.find_one({"user_id": user_id})
+    if not user:
+        # Insert new user
+        users.insert_one({"user_id": user_id, "username": username, "harem": []})
+    elif user.get("username") != username:
+        # Only update if username changed
+        users.update_one({"user_id": user_id}, {"$set": {"username": username}})
 
 # Add waifu to harem
 def add_waifu_to_harem(user_id: int, waifu: dict):
+    # Add new waifu if not already collected
     users.update_one(
         {"user_id": user_id, "harem.id": {"$ne": waifu["id"]}},
         {"$push": {"harem": {**waifu, "count": 1}}},
     )
+    # If waifu already exists, increase count
     users.update_one(
         {"user_id": user_id, "harem.id": waifu["id"]},
         {"$inc": {"harem.$.count": 1}},
