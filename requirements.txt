@@ -3,3 +3,5 @@ APScheduler==3.10.4
 httpx
 pymongo
 pymongo[srv]
+pymongo>=4.3
+dnspython>=2.3
