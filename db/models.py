@@ -39,7 +39,7 @@ def add_waifu_to_harem(user_id: int, waifu: dict):
     waifu = {
         "name": "Mikasa Ackerman",
         "series": "Attack On Titan",
-        "rarity": "Winter"
+        "rarity": "Winter",
         "id": 122,
     }
     """
@@ -59,4 +59,24 @@ def add_waifu_to_harem(user_id: int, waifu: dict):
 def get_harem(user_id: int):
     user = users.find_one({"user_id": user_id}, {"harem": 1})
     return user.get("harem", []) if user else []
+
+# 🔹 Leaderboard: Top users by total waifus
+def get_leaderboard(limit: int = 10):
+    pipeline = [
+        {"$unwind": "$harem"},  # break harem array into separate docs
+        {"$group": {"_id": "$user_id", "total": {"$sum": "$harem.count"}}},
+        {"$sort": {"total": -1}},
+        {"$limit": limit},
+        {
+            "$lookup": {  # get username back
+                "from": "users",
+                "localField": "_id",
+                "foreignField": "user_id",
+                "as": "user_info"
+            }
+        },
+        {"$unwind": "$user_info"},
+        {"$project": {"user_id": "$_id", "username": "$user_info.username", "total": 1}}
+    ]
+    return list(users.aggregate(pipeline))
     
