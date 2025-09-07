@@ -32,4 +32,31 @@ def add_user(user_id: int, username: str):
         },
         upsert=True
     )
+
+# 🔹 Add waifu to user harem
+def add_waifu_to_harem(user_id: int, waifu: dict):
+    """
+    waifu = {
+        "name": "Mikasa Ackerman",
+        "series": "Attack On Titan",
+        "rarity": "Winter"
+        "id": 122,
+    }
+    """
+    # Add new waifu if not already collected
+    users.update_one(
+        {"user_id": user_id, "harem.id": {"$ne": waifu["id"]}},
+        {"$push": {"harem": {**waifu, "count": 1}}},
+    )
+
+    # If waifu already exists, increase count
+    users.update_one(
+        {"user_id": user_id, "harem.id": waifu["id"]},
+        {"$inc": {"harem.$.count": 1}},
+    )
+
+# 🔹 Get user harem
+def get_harem(user_id: int):
+    user = users.find_one({"user_id": user_id}, {"harem": 1})
+    return user.get("harem", []) if user else []
     
