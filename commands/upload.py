@@ -1,27 +1,22 @@
 # commands/upload.py
 from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler
+from db.models import waifus  # MongoDB collection
 import os
 import re
-import json
-import pathlib
 
-# Owner ID
+# ✅ Owner ID from env
 OWNER_ID = int(os.getenv("OWNER_ID", "0"))
 
-# JSON file
-BASE_DIR = pathlib.Path(__file__).parent.parent.resolve()
-WAIFU_DATA = BASE_DIR / "waifu_data" / "waifus.json"
-WAIFU_DATA.parent.mkdir(parents=True, exist_ok=True)
-if not WAIFU_DATA.exists():
-    WAIFU_DATA.write_text("[]")  # initialize empty list
-
 async def upload_waifu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handles /upload (Name) (Series) (Rarity) (ID) (DropChance) [FileID]"""
+    
     user_id = update.effective_user.id
     if user_id != OWNER_ID:
         await update.message.reply_text("🚫 Only the owner can upload waifus.")
         return
 
+    # Extract arguments inside ()
     text = update.message.text
     matches = re.findall(r"\((.*?)\)", text)
 
@@ -36,36 +31,36 @@ async def upload_waifu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     rarity = matches[2].strip()
     try:
         waifu_id = int(matches[3].strip())
-        drop_chance = float(matches[4].strip())
     except ValueError:
-        await update.message.reply_text("⚠️ ID must be integer, DropChance must be number.")
+        await update.message.reply_text("⚠️ ID must be an integer.")
         return
 
-    # Get photo file ID
+    try:
+        drop_chance = float(matches[4].strip())
+    except ValueError:
+        await update.message.reply_text("⚠️ DropChance must be a number.")
+        return
+
+    # Get image: reply to photo or optional file ID
     file_id = None
     if update.message.reply_to_message and update.message.reply_to_message.photo:
-        file_id = update.message.reply_to_message.photo[-1].file_id
+        photo = update.message.reply_to_message.photo[-1]  # best quality
+        file_id = photo.file_id
     elif len(matches) >= 6:
         file_id = matches[5].strip()
-
+    
     if not file_id:
         await update.message.reply_text(
             "⚠️ Please reply to a photo or provide a valid Telegram file ID."
         )
         return
 
-    # Load existing waifus
-    try:
-        waifus = json.loads(WAIFU_DATA.read_text())
-    except json.JSONDecodeError:
-        waifus = []
-
-    # Check duplicate ID
-    if any(w["id"] == waifu_id for w in waifus):
+    # Check for duplicate ID
+    if waifus.find_one({"id": waifu_id}):
         await update.message.reply_text(f"⚠️ Waifu with ID {waifu_id} already exists!")
         return
 
-    # Add new waifu
+    # Prepare waifu document
     new_waifu = {
         "id": waifu_id,
         "name": name,
@@ -75,10 +70,9 @@ async def upload_waifu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "desc": f"From {series}",
         "image": file_id,
     }
-    waifus.append(new_waifu)
 
-    # Save back to JSON
-    WAIFU_DATA.write_text(json.dumps(waifus, indent=4))
+    # Insert into MongoDB
+    waifus.insert_one(new_waifu)
 
     await update.message.reply_text(
         f"✅ Added {name} ({series}) | Rarity: {rarity} | ID: {waifu_id} | Drop Chance: {drop_chance}%"
@@ -86,4 +80,3 @@ async def upload_waifu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def get_upload_handler():
     return CommandHandler("upload", upload_waifu)
-    
