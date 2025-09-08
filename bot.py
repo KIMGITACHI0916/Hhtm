@@ -5,6 +5,7 @@ from commands.collect import handle_collect
 from commands.harem import handle_harem
 from commands.info import handle_info
 from commands.leaderboard import handle_leaderboard
+from commands.uploader import get_upload_handler   # ✅ ADD THIS
 from scheduler import start_scheduler, drop_waifu
 from dotenv import load_dotenv
 import os
@@ -40,6 +41,9 @@ def main():
     app.add_handler(CommandHandler("info", handle_info))
     app.add_handler(CommandHandler("top", handle_leaderboard))
     app.add_handler(CommandHandler("drop", lambda update, context: asyncio.create_task(drop_waifu(app.bot, update.effective_chat.id))))
+
+    # ✅ Register upload handler
+    app.add_handler(get_upload_handler())
 
     print("✅ Bot is running...")
     app.run_polling()
