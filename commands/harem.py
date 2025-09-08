@@ -20,7 +20,7 @@ def handle_harem(update, context):
     harem = get_harem(user_id)
 
     if not harem:
-        update.message.reply_text("You don’t have any waifus yet 😢")
+        await update.message.reply_text("You don’t have any waifus yet 😢"
         return
 
     # Group by series
