@@ -1,6 +1,7 @@
 import asyncio
 from telegram.ext import ApplicationBuilder, CommandHandler
 from db.models import init_db, add_user
+from commands.waifulist import get_waifulist_handler
 from commands.collect import handle_collect
 from commands.harem import handle_harem
 from commands.info import handle_info
@@ -41,8 +42,7 @@ def main():
     app.add_handler(CommandHandler("info", handle_info))
     app.add_handler(CommandHandler("top", handle_leaderboard))
     app.add_handler(CommandHandler("drop", lambda update, context: asyncio.create_task(drop_waifu(app.bot, update.effective_chat.id))))
-
-    # ✅ Register upload handler
+    app.add_handler(get_waifulist_handler())
     app.add_handler(get_upload_handler())
 
     print("✅ Bot is running...")
