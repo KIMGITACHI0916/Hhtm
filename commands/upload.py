@@ -4,9 +4,17 @@ from telegram.ext import ContextTypes, CommandHandler
 import os
 import re
 import json
+import pathlib
 
-WAIFU_DATA = os.path.join(os.path.dirname(__file__), "..", "waifu_data", "waifus.json")
+# Owner ID
 OWNER_ID = int(os.getenv("OWNER_ID", "0"))
+
+# JSON file
+BASE_DIR = pathlib.Path(__file__).parent.parent.resolve()
+WAIFU_DATA = BASE_DIR / "waifu_data" / "waifus.json"
+WAIFU_DATA.parent.mkdir(parents=True, exist_ok=True)
+if not WAIFU_DATA.exists():
+    WAIFU_DATA.write_text("[]")  # initialize empty list
 
 async def upload_waifu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -23,40 +31,37 @@ async def upload_waifu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    name, series, rarity = matches[0].strip(), matches[1].strip(), matches[2].strip()
+    name = matches[0].strip()
+    series = matches[1].strip()
+    rarity = matches[2].strip()
     try:
         waifu_id = int(matches[3].strip())
-    except ValueError:
-        await update.message.reply_text("⚠️ ID must be an integer.")
-        return
-
-    try:
         drop_chance = float(matches[4].strip())
     except ValueError:
-        await update.message.reply_text("⚠️ DropChance must be a number.")
+        await update.message.reply_text("⚠️ ID must be integer, DropChance must be number.")
         return
 
-    # Image: reply to photo or optional FileID
+    # Get photo file ID
     file_id = None
     if update.message.reply_to_message and update.message.reply_to_message.photo:
-        photo = update.message.reply_to_message.photo[-1]
-        file_id = photo.file_id
+        file_id = update.message.reply_to_message.photo[-1].file_id
     elif len(matches) >= 6:
         file_id = matches[5].strip()
 
     if not file_id:
-        await update.message.reply_text("⚠️ Reply to a photo or provide a file ID.")
+        await update.message.reply_text(
+            "⚠️ Please reply to a photo or provide a valid Telegram file ID."
+        )
         return
 
-    # Load JSON
+    # Load existing waifus
     try:
-        with open(WAIFU_DATA, "r") as f:
-            waifus = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
+        waifus = json.loads(WAIFU_DATA.read_text())
+    except json.JSONDecodeError:
         waifus = []
 
     # Check duplicate ID
-    if any(w.get("id") == waifu_id for w in waifus):
+    if any(w["id"] == waifu_id for w in waifus):
         await update.message.reply_text(f"⚠️ Waifu with ID {waifu_id} already exists!")
         return
 
@@ -72,9 +77,8 @@ async def upload_waifu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     }
     waifus.append(new_waifu)
 
-    # Save JSON
-    with open(WAIFU_DATA, "w") as f:
-        json.dump(waifus, f, indent=4)
+    # Save back to JSON
+    WAIFU_DATA.write_text(json.dumps(waifus, indent=4))
 
     await update.message.reply_text(
         f"✅ Added {name} ({series}) | Rarity: {rarity} | ID: {waifu_id} | Drop Chance: {drop_chance}%"
