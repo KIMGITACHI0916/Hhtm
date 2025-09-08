@@ -5,7 +5,7 @@ from commands.collect import handle_collect
 from commands.harem import handle_harem
 from commands.info import handle_info
 from commands.leaderboard import handle_leaderboard
-from commands.uploader import get_upload_handler   # ✅ ADD THIS
+from commands.upload import get_upload_handler   # ✅ ADD THIS
 from scheduler import start_scheduler, drop_waifu
 from dotenv import load_dotenv
 import os
