@@ -58,8 +58,12 @@ def main():
 
     print("✅ Bot is running...")
 
-    # 🔥 Run global scheduler
-    asyncio.create_task(start_scheduler(app))
+    # 🔥 Run global scheduler after app starts
+    async def on_startup(app):
+        asyncio.create_task(start_scheduler(app))
+        print("[Scheduler] Global scheduler started")
+
+    app.post_init = on_startup
 
     app.run_polling()
     
