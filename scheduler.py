@@ -54,11 +54,17 @@ async def start_scheduler(app: Application):
 
 # --- Track when bot is added/removed ---
 async def handle_new_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat = update.chat_member.chat
-    new_status = update.chat_member.new_chat_member.status
-    old_status = update.chat_member.old_chat_member.status
+    # Use my_chat_member for bot's own status updates
+    chat_member_update = getattr(update, "my_chat_member", None)
+    if not chat_member_update:
+        return  # nothing to do
 
-    if new_status in ["member", "administrator"]:  # bot added
+    chat = chat_member_update.chat
+    new_status = chat_member_update.new_chat_member.status
+    old_status = chat_member_update.old_chat_member.status
+
+    # Bot added to a group
+    if new_status in ["member", "administrator"] and chat.type in ["group", "supergroup"]:
         groups.update_one(
             {"chat_id": chat.id},
             {"$set": {"chat_id": chat.id, "title": chat.title}},
@@ -66,12 +72,8 @@ async def handle_new_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         print(f"[Scheduler] Added {chat.title} ({chat.id})")
 
-    elif old_status in ["member", "administrator"] and new_status == "left":  # bot removed
+    # Bot removed from a group
+    elif old_status in ["member", "administrator"] and new_status == "left":
         groups.delete_one({"chat_id": chat.id})
         print(f"[Scheduler] Removed {chat.title} ({chat.id})")
-
-
-def add_handlers(app: Application):
-    """Attach chat join/leave handler"""
-    app.add_handler(ChatMemberHandler(handle_new_chat, ChatMemberHandler.MY_CHAT_MEMBER))
-    
+                                            
