@@ -7,7 +7,7 @@ from telegram.ext import (
     CommandHandler,
     ContextTypes
 )
-from db.models import init_db, add_user
+from db.models import init_db, add_user, get_all_group_ids
 from scheduler import start_scheduler, drop_waifu, add_handlers
 
 # Load environment variables
@@ -29,16 +29,29 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text="Welcome to WaifuBot! Waifus will drop randomly. Use /grab to collect them!"
     )
 
-    # Start scheduler for this group
-    if chat.type in ["group", "supergroup"]:
-        asyncio.create_task(start_scheduler(context.application, chat.id))
-        print(f"[INFO] Scheduler started in group {chat.id}")
-
 # --- /drop command for manual testing ---
 async def manual_drop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     await drop_waifu(context.application, chat_id)
     await context.bot.send_message(chat_id=chat_id, text="Waifu drop triggered manually!")
+
+# --- /startdropping command to start scheduler in all groups ---
+async def start_dropping(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+
+    # Fetch all group IDs from database
+    group_ids = get_all_group_ids()  # implement in db.models
+
+    if not group_ids:
+        await context.bot.send_message(chat_id=chat_id, text="No groups found to start dropping.")
+        return
+
+    # Start scheduler in all groups
+    for gid in group_ids:
+        asyncio.create_task(start_scheduler(context.application, gid))
+        print(f"[INFO] Scheduler started in group {gid}")
+
+    await context.bot.send_message(chat_id=chat_id, text="✅ Waifu dropping started in all groups!")
 
 # --- Main function ---
 def main():
@@ -55,7 +68,8 @@ def main():
         # Register commands
         app.add_handler(CommandHandler("start", start))
         app.add_handler(CommandHandler("drop", manual_drop))
-        # Additional command handlers can be added later
+        app.add_handler(CommandHandler("startdropping", start_dropping))
+        # Add other command handlers later:
         # app.add_handler(CommandHandler("grab", handle_collect))
         # app.add_handler(CommandHandler("harem", handle_harem))
         # app.add_handler(CommandHandler("info", handle_info))
@@ -64,12 +78,8 @@ def main():
         print("✅ Handlers attached")
         print("✅ Commands registered")
 
-        # Start scheduler after bot is ready
-        async def post_init(application):
-            print("⚡ Scheduler starting...")
-            asyncio.create_task(start_scheduler(application))
-
-        app.post_init = post_init
+        # Do NOT auto-start scheduler here
+        # post_init removed for manual control
 
         print("📡 Starting polling...")
         app.run_polling()
