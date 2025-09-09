@@ -1,8 +1,7 @@
 import random
 from collections import deque
-from db.models import waifus  # MongoDB collection
+from db.models import waifus
 
-# rarity weights
 RARITY_WEIGHTS = {
     "Common": 75.47,
     "Uncommon": 53.76,
@@ -13,7 +12,6 @@ RARITY_WEIGHTS = {
     "AMV": 2.98,
 }
 
-# decay buffer (recent waifus avoid repeat)
 DECAY_BUFFER = deque(maxlen=24)
 
 def pick_random_waifu():
@@ -26,8 +24,6 @@ def pick_random_waifu():
     chosen_rarity = random.choices(rarities, weights=weights, k=1)[0]
 
     candidates = [w for w in all_waifus if w["rarity"].lower() == chosen_rarity.lower()]
-    if not candidates:
-        return None
 
     if chosen_rarity in ["Common", "Uncommon", "Rare"]:
         candidates = [w for w in candidates if w["id"] not in DECAY_BUFFER]
