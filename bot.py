@@ -1,6 +1,7 @@
 # bot.py
 import os
 import asyncio
+from telegram.ext import ApplicationBuilder
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import (
@@ -41,8 +42,9 @@ async def handle_group_status(update: Update, context: ContextTypes.DEFAULT_TYPE
         groups.delete_one({"chat_id": chat.id})
         print(f"[BOT] Removed from {chat.title} ({chat.id})")
 
-def main():
-    app = Application.builder().token(BOT_TOKEN).build()
+async def main():
+    # Bot build
+    app = ApplicationBuilder().token(TOKEN).build()
 
     # Commands
     app.add_handler(CommandHandler("start", start))
@@ -51,13 +53,15 @@ def main():
     # Group add/remove
     app.add_handler(ChatMemberHandler(handle_group_status, ChatMemberHandler.MY_CHAT_MEMBER))
 
-    # Start scheduler loop
-    from scheduler import start_scheduler
+    # Start scheduler
     asyncio.create_task(start_scheduler(app))
 
+# Start polling (this runs forever)
+    
     print("[BOT] Running...")
-    app.run_polling()
+    await app.run_polling()
+    
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
     
