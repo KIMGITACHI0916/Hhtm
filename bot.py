@@ -29,11 +29,6 @@ async def start(update, context):
         "Welcome to WaifuBot! Waifus will drop randomly. Use /grab to collect them!"
     )
 
-    # Start scheduler for this group if added manually via /start
-    if chat.type in ["group", "supergroup"]:
-        asyncio.create_task(start_scheduler(context.application, chat.id))
-        print(f"[INFO] Scheduler manually started in group {chat.id}")
-
 # --- Optional: manual /drop command for testing ---
 async def manual_drop(update, context):
     await drop_waifu(context.application.bot, update.effective_chat.id)
@@ -58,12 +53,15 @@ def main():
 
     print("✅ Bot is running...")
 
-    # 🔥 Run global scheduler after app starts
+    # 🔥 Run global scheduler after startup
     async def on_startup(app):
+        print("[Scheduler] Starting...")
         asyncio.create_task(start_scheduler(app))
-        print("[Scheduler] Global scheduler started")
 
     app.post_init = on_startup
+
+    print(f"[DEBUG] Bot token loaded? {bool(TOKEN)}")
+    
 
     app.run_polling()
     
