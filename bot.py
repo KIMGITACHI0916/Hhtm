@@ -7,7 +7,7 @@ from telegram.ext import (
     CommandHandler,
     ContextTypes
 )
-from db.models import init_db, add_user, get_all_group_ids
+from db.models import init_db, add_user, add_group, get_all_group_ids
 from scheduler import start_scheduler, drop_waifu, add_handlers
 
 # Load environment variables
