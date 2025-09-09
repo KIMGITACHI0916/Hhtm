@@ -1,8 +1,9 @@
+import os
 import asyncio
+from dotenv import load_dotenv
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
-    ChatMemberHandler,
 )
 from db.models import init_db, add_user
 from commands.waifulist import get_waifulist_handler
@@ -12,34 +13,44 @@ from commands.info import handle_info
 from commands.leaderboard import handle_leaderboard
 from commands.upload import get_upload_handler
 from scheduler import start_scheduler, drop_waifu, add_handlers
-from dotenv import load_dotenv
-import os
 
-# Load environment variables
+# Load env
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 
-# --- /start command handler ---
+# --- /start command ---
 async def start(update, context):
     user = update.effective_user
     chat = update.effective_chat
 
     add_user(user.id, user.username)
     await update.message.reply_text(
-        "Welcome to WaifuBot! Waifus will drop randomly. Use /grab to collect them!"
+        "✅ Welcome to WaifuBot!\n"
+        "Waifus will drop randomly every 10 minutes.\n"
+        "Use /grab to collect them!"
     )
 
-# --- Optional: manual /drop command for testing ---
+    print(f"[START] {user.username} used /start in chat {chat.id}", flush=True)
+
+# --- Manual drop ---
 async def manual_drop(update, context):
     await drop_waifu(context.application.bot, update.effective_chat.id)
 
-# --- Main function ---
 def main():
+    print("🚀 Bot is starting...", flush=True)
+
+    if not TOKEN:
+        print("❌ ERROR: BOT_TOKEN not set in Railway variables!", flush=True)
+        return
+
     init_db()
+    print("✅ Database initialized", flush=True)
+
     app = ApplicationBuilder().token(TOKEN).build()
 
-    # Attach auto group tracking
+    # Group tracking
     add_handlers(app)
+    print("✅ Handlers attached", flush=True)
 
     # Commands
     app.add_handler(CommandHandler("start", start))
@@ -51,17 +62,16 @@ def main():
     app.add_handler(get_waifulist_handler())
     app.add_handler(get_upload_handler())
 
-    print("✅ Bot is running...")
+    print("✅ Commands registered", flush=True)
 
-    # 🔥 Run global scheduler after startup
-    async def on_startup(app):
-        print("[Scheduler] Starting...")
+    async def run():
+        print("⚡ Scheduler starting...", flush=True)
         asyncio.create_task(start_scheduler(app))
+        print("📡 Starting polling...", flush=True)
+        await app.run_polling()
 
-    app.post_init = on_startup
+    asyncio.run(run())
 
-    print(f"[DEBUG] Bot token loaded? {bool(TOKEN)}")
-    
-
-    app.run_polling()
+if __name__ == "__main__":
+    main()
     
