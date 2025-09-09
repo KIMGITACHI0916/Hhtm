@@ -2,11 +2,12 @@ import os
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from db.models import init_db, add_waifu_to_harem, active_drops
-from scheduler import start_scheduler, drop_waifu
+from scheduler import start_scheduler
 
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
 
+# --- Handlers ---
 async def start(update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Hello! Waifu bot is online.")
 
@@ -32,22 +33,24 @@ async def grab(update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🎉 You grabbed {waifu['name']}!")
     active_drops.delete_one({"chat_id": update.effective_chat.id})
 
-async def main():
+# --- Startup callback ---
+async def on_startup(app):
+    print("[INFO] Starting scheduler…")
+    # Start scheduler in background
+    app.create_task(start_scheduler(app))
+
+# --- Main ---
+def main():
     init_db()
     app = ApplicationBuilder().token(TOKEN).build()
 
-    # Register handlers
+    # Handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("grab", grab))
 
-    # Start scheduler as a background task
-    app.create_task(start_scheduler(app))
-
-    print("[INFO] Bot is running…")
-    # Run the bot
-    await app.run_polling()
+    # Run polling (will manage event loop internally)
+    app.run_polling(close_loop=False, post_init=on_startup)
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    main()
     
