@@ -40,28 +40,26 @@ async def manual_drop(update, context):
 
 # --- Main function ---
 def main():
-    # Initialize DB
     init_db()
-
-    # Build bot application
     app = ApplicationBuilder().token(TOKEN).build()
 
-    # Attach scheduler auto-start handlers (runs when bot is added to a group)
+    # Attach auto group tracking
     add_handlers(app)
 
-    # Command handlers
+    # Commands
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("grab", handle_collect))
     app.add_handler(CommandHandler("harem", handle_harem))
     app.add_handler(CommandHandler("info", handle_info))
     app.add_handler(CommandHandler("top", handle_leaderboard))
-    app.add_handler(CommandHandler("drop", manual_drop))  # for testing
+    app.add_handler(CommandHandler("drop", manual_drop))
     app.add_handler(get_waifulist_handler())
     app.add_handler(get_upload_handler())
 
     print("✅ Bot is running...")
-    app.run_polling()
 
-if __name__ == "__main__":
-    main()
+    # 🔥 Run global scheduler
+    asyncio.create_task(start_scheduler(app))
+
+    app.run_polling()
     
