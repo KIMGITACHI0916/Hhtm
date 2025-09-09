@@ -59,12 +59,13 @@ def main():
     print("✅ Handlers attached")
     print("✅ Commands registered")
 
-    # 🔥 Global scheduler (background task)
-    asyncio.create_task(start_scheduler(app))
+    # 🚀 Hook scheduler after the bot is ready
+    async def post_init(application):
+        print("⚡ Scheduler starting...")
+        asyncio.create_task(start_scheduler(application))
+
+    app.post_init = post_init
 
     print("📡 Starting polling...")
-    app.run_polling()   # <-- NO asyncio.run()
-
-if __name__ == "__main__":
-    main()
+    app.run_polling()
     
