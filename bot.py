@@ -36,7 +36,12 @@ async def manual_drop(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- /startdropping command to start scheduler in all groups ---
 async def start_dropping(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
+    chat = update.effective_chat
+    chat_id = chat.id
+
+    # Ensure current chat is stored in DB if it's a group
+    if chat.type in ["group", "supergroup"]:
+        add_group(chat_id, chat.title)
 
     # Fetch all group IDs from database
     group_ids = get_all_group_ids()
@@ -87,8 +92,6 @@ def main():
 
         print("✅ Handlers attached")
         print("✅ Commands registered")
-
-        # Do NOT auto-start scheduler here
         print("📡 Starting polling...")
         app.run_polling()
 
