@@ -37,7 +37,7 @@ def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("collect", handle_collect))
+    app.add_handler(CommandHandler("grab", handle_collect))
     app.add_handler(CommandHandler("harem", handle_harem))
     app.add_handler(CommandHandler("info", handle_info))
     app.add_handler(CommandHandler("top", handle_leaderboard))
