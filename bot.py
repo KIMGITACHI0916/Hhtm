@@ -1,9 +1,10 @@
+
 # bot.py
 import os
 import asyncio
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from dotenv import load_dotenv
-from db.models import init_db, users, active_drops
+from db.models import init_db, active_drops, add_waifu_to_harem
 from scheduler import drop_waifu, start_scheduler
 
 # Load .env
@@ -32,7 +33,6 @@ async def grab(update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Add to user harem
-    from db.models import add_waifu_to_harem
     add_waifu_to_harem(user_id, waifu)
     await update.message.reply_text(f"🎉 You grabbed {waifu['name']}!")
 
@@ -43,15 +43,23 @@ async def main():
     init_db()
     app = ApplicationBuilder().token(TOKEN).build()
 
+    # Add bot command handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("grab", grab))
 
-    # Start global scheduler
-    asyncio.create_task(start_scheduler(app))
+    # Start the scheduler as a background task inside the bot
+    app.create_task(start_scheduler(app))
 
     print("[INFO] Bot is running…")
     await app.run_polling()
 
+# Entry point
 if __name__ == "__main__":
-    asyncio.run(main())
-    
+    # Directly run main without wrapping in asyncio.run() if running in interactive/looped env
+    try:
+        asyncio.run(main())
+    except RuntimeError as e:
+        # Fallback if event loop is already running (like in Jupyter or certain Docker setups)
+        loop = asyncio.get_event_loop()
+        loop.create_task(main())
+        
