@@ -1,7 +1,7 @@
-from db.models import get_harem
+# /app/commands/info.py
 
-def handle_info(update, context):
-    user = update.effective_user
-    harem = get_harem(user.id)
-    count = len(harem)
-    update.message.reply_text(f"You have {count} waifus in your harem.")
+async def handle_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    count = get_waifu_count(user_id)  # however you calculate it
+    await update.message.reply_text(f"You have {count} waifus in your harem.")
+    
