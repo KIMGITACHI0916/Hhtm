@@ -1,11 +1,6 @@
-import json
-import pathlib
 import random
 from collections import deque
-
-# JSON file with waifus
-BASE_DIR = pathlib.Path(__file__).parent.parent.resolve()
-WAIFU_DATA = BASE_DIR / "waifu_data" / "waifus.json"
+from db.models import waifus  # MongoDB collection
 
 # rarity weights (probabilities)
 RARITY_WEIGHTS = {
@@ -21,18 +16,9 @@ RARITY_WEIGHTS = {
 # decay buffer (stores recently dropped waifus)
 DECAY_BUFFER = deque(maxlen=24)
 
-
-def load_waifus():
-    try:
-        with open(WAIFU_DATA, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return []
-
-
 def pick_random_waifu():
-    waifus = load_waifus()
-    if not waifus:
+    all_waifus = list(waifus.find({}))  # fetch all waifus from MongoDB
+    if not all_waifus:
         return None
 
     # weighted rarity selection
@@ -41,17 +27,17 @@ def pick_random_waifu():
     chosen_rarity = random.choices(rarities, weights=weights, k=1)[0]
 
     # filter waifus of that rarity
-    candidates = [w for w in waifus if w["rarity"].lower() == chosen_rarity.lower()]
+    candidates = [w for w in all_waifus if w["rarity"].lower() == chosen_rarity.lower()]
     if not candidates:
         return None
 
-    # apply decay filter (only Common, Uncommon, Rare)
+    # apply decay filter for Common, Uncommon, Rare
     if chosen_rarity in ["Common", "Uncommon", "Rare"]:
         candidates = [w for w in candidates if w["id"] not in DECAY_BUFFER]
 
     if not candidates:
-        # fallback → pick random from all
-        candidates = [w for w in waifus if w["rarity"].lower() == chosen_rarity.lower()]
+        # fallback → pick random from all of chosen rarity
+        candidates = [w for w in all_waifus if w["rarity"].lower() == chosen_rarity.lower()]
 
     chosen = random.choice(candidates)
 
