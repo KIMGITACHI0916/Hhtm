@@ -1,11 +1,10 @@
-# bot.py
+# bot.py (PTB v20 compatible)
 import os
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from db.models import init_db, active_drops, add_waifu_to_harem
-from scheduler import drop_waifu, start_scheduler
+from scheduler import start_scheduler
 
-# Load environment variables
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
 
@@ -31,11 +30,8 @@ async def grab(update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"{waifu_name} is not available!")
         return
 
-    # Add to user harem
     add_waifu_to_harem(user_id, waifu)
     await update.message.reply_text(f"🎉 You grabbed {waifu['name']}!")
-
-    # Remove from active drops
     active_drops.delete_one({"chat_id": update.effective_chat.id})
 
 
@@ -44,14 +40,18 @@ def main():
     init_db()
     app = ApplicationBuilder().token(TOKEN).build()
 
-    # Handlers
+    # Add handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("grab", grab))
 
     print("[INFO] Bot is running…")
 
-    # Run polling and start scheduler after initialization
-    app.run_polling(post_init=start_scheduler)
+    # Start scheduler after bot is running
+    async def on_startup(app):
+        app.create_task(start_scheduler(app))
+
+    # Run bot
+    app.run_polling(close_loop=False, on_startup=on_startup)
 
 
 if __name__ == "__main__":
