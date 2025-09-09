@@ -18,14 +18,13 @@ TOKEN = os.getenv("BOT_TOKEN")
 # --- /start command handler ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    chat = update.effective_chat
 
     # Add user to database
     add_user(user.id, user.username)
 
     # Safe welcome message
     await context.bot.send_message(
-        chat_id=chat.id,
+        chat_id=update.effective_chat.id,
         text="Welcome to WaifuBot! Waifus will drop randomly. Use /grab to collect them!"
     )
 
@@ -55,7 +54,10 @@ async def start_dropping(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- Auto-track groups when bot is added ---
 async def track_groups(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat = update.effective_chat
+    if update.my_chat_member is None:
+        return  # Safety check
+
+    chat = update.my_chat_member.chat
     new_status = update.my_chat_member.new_chat_member.status
 
     # If bot was added to a group
@@ -72,7 +74,7 @@ def main():
         # Build bot application
         app = ApplicationBuilder().token(TOKEN).build()
 
-        # Attach auto group tracking handlers
+        # Attach other app-specific handlers
         add_handlers(app)
 
         # Register commands
@@ -80,15 +82,13 @@ def main():
         app.add_handler(CommandHandler("drop", manual_drop))
         app.add_handler(CommandHandler("startdropping", start_dropping))
 
-        # Attach ChatMember handler to automatically track groups
+        # Attach ChatMemberHandler to track groups automatically
         app.add_handler(ChatMemberHandler(track_groups, chat_member_types=["my_chat_member"]))
 
         print("✅ Handlers attached")
         print("✅ Commands registered")
 
         # Do NOT auto-start scheduler here
-        # post_init removed for manual control
-
         print("📡 Starting polling...")
         app.run_polling()
 
@@ -100,4 +100,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-        
+    
