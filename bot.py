@@ -7,7 +7,7 @@ from telegram.ext import (
     Application, CommandHandler, ContextTypes,
     ChatMemberHandler
 )
-from scheduler import drop_waifu, start_scheduler, stop_scheduler, start_global_scheduler
+from scheduler import drop_waifu, start_scheduler
 from db.models import groups
 
 load_dotenv()
