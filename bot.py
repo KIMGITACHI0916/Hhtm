@@ -1,6 +1,4 @@
-import os
 import asyncio
-from dotenv import load_dotenv
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -13,44 +11,40 @@ from commands.info import handle_info
 from commands.leaderboard import handle_leaderboard
 from commands.upload import get_upload_handler
 from scheduler import start_scheduler, drop_waifu, add_handlers
+from dotenv import load_dotenv
+import os
 
-# Load env
+# Load environment variables
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 
-# --- /start command ---
+# --- /start command handler ---
 async def start(update, context):
     user = update.effective_user
     chat = update.effective_chat
 
     add_user(user.id, user.username)
     await update.message.reply_text(
-        "✅ Welcome to WaifuBot!\n"
-        "Waifus will drop randomly every 10 minutes.\n"
-        "Use /grab to collect them!"
+        "Welcome to WaifuBot! Waifus will drop randomly. Use /grab to collect them!"
     )
 
-    print(f"[START] {user.username} used /start in chat {chat.id}", flush=True)
+    # Start scheduler for this group if added manually via /start
+    if chat.type in ["group", "supergroup"]:
+        asyncio.create_task(start_scheduler(context.application, chat.id))
+        print(f"[INFO] Scheduler manually started in group {chat.id}")
 
-# --- Manual drop ---
+# --- Optional: manual /drop command for testing ---
 async def manual_drop(update, context):
     await drop_waifu(context.application.bot, update.effective_chat.id)
 
+# --- Main function ---
 def main():
-    print("🚀 Bot is starting...", flush=True)
-
-    if not TOKEN:
-        print("❌ ERROR: BOT_TOKEN not set in Railway variables!", flush=True)
-        return
-
+    print("🚀 Bot is starting...")
     init_db()
-    print("✅ Database initialized", flush=True)
-
     app = ApplicationBuilder().token(TOKEN).build()
 
-    # Group tracking
+    # Attach auto group tracking
     add_handlers(app)
-    print("✅ Handlers attached", flush=True)
 
     # Commands
     app.add_handler(CommandHandler("start", start))
@@ -62,15 +56,14 @@ def main():
     app.add_handler(get_waifulist_handler())
     app.add_handler(get_upload_handler())
 
-    print("✅ Commands registered", flush=True)
+    print("✅ Handlers attached")
+    print("✅ Commands registered")
 
-    async def run():
-        print("⚡ Scheduler starting...", flush=True)
-        asyncio.create_task(start_scheduler(app))
-        print("📡 Starting polling...", flush=True)
-        await app.run_polling()
+    # 🔥 Global scheduler (background task)
+    asyncio.create_task(start_scheduler(app))
 
-    asyncio.run(run())
+    print("📡 Starting polling...")
+    app.run_polling()   # <-- NO asyncio.run()
 
 if __name__ == "__main__":
     main()
