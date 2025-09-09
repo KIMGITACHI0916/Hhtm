@@ -2,7 +2,7 @@ import asyncio
 from telegram import Update
 from telegram.ext import Application, ContextTypes, ChatMemberHandler
 from utils.waifu_picker import pick_random_waifu
-from db.models import groups  # <-- new: store groups in DB
+from db.models import groups  # store groups in DB
 
 current_drop = {}  # chat_id -> waifu
 
@@ -76,4 +76,10 @@ async def handle_new_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif old_status in ["member", "administrator"] and new_status == "left":
         groups.delete_one({"chat_id": chat.id})
         print(f"[Scheduler] Removed {chat.title} ({chat.id})")
-                                            
+
+
+# --- Add handlers function for bot.py ---
+def add_handlers(app: Application):
+    """Attach chat join/leave handler"""
+    app.add_handler(ChatMemberHandler(handle_new_chat, ChatMemberHandler.MY_CHAT_MEMBER))
+    
