@@ -1,104 +1,44 @@
-import asyncio
+# bot.py
 import os
 from dotenv import load_dotenv
+from telegram.ext import Application, ChatMemberHandler
+from scheduler import start_group_scheduler, stop_group_scheduler
+from db.models import groups
 from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    ContextTypes,
-    ChatMemberHandler
-)
-from db.models import init_db, add_user, add_group, get_all_group_ids
-from scheduler import start_scheduler, drop_waifu, add_handlers
+from telegram.ext import ContextTypes
 
-# Load environment variables
+# 🔹 Load env
 load_dotenv()
-TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-# --- /start command handler ---
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
+# --- Bot added/removed from group ---
+async def handle_group_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_member_update = update.my_chat_member
+    chat = chat_member_update.chat
+    new_status = chat_member_update.new_chat_member.status
+    old_status = chat_member_update.old_chat_member.status
 
-    # Add user to database
-    add_user(user.id, user.username)
-
-    # Safe welcome message
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text="Welcome to WaifuBot! Waifus will drop randomly. Use /grab to collect them!"
-    )
-
-# --- /drop command for manual testing ---
-async def manual_drop(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
-    await drop_waifu(context.application, chat_id)
-    await context.bot.send_message(chat_id=chat_id, text="Waifu drop triggered manually!")
-
-# --- /startdropping command to start scheduler in all groups ---
-async def start_dropping(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat = update.effective_chat
-    chat_id = chat.id
-
-    # Ensure current chat is stored in DB if it's a group
-    if chat.type in ["group", "supergroup"]:
-        add_group(chat_id, chat.title)
-
-    # Fetch all group IDs from database
-    group_ids = get_all_group_ids()
-
-    if not group_ids:
-        await context.bot.send_message(chat_id=chat_id, text="No groups found to start dropping.")
-        return
-
-    # Start scheduler in all groups
-    for gid in group_ids:
-        asyncio.create_task(start_scheduler(context.application, gid))
-        print(f"[INFO] Scheduler started in group {gid}")
-
-    await context.bot.send_message(chat_id=chat_id, text="✅ Waifu dropping started in all groups!")
-
-# --- Auto-track groups when bot is added ---
-async def track_groups(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.my_chat_member is None:
-        return  # Safety check
-
-    chat = update.my_chat_member.chat
-    new_status = update.my_chat_member.new_chat_member.status
-
-    # If bot was added to a group
+    # ✅ Bot added
     if new_status in ["member", "administrator"] and chat.type in ["group", "supergroup"]:
-        add_group(chat.id, chat.title)
-        print(f"[INFO] Bot added to group {chat.title} ({chat.id})")
+        groups.update_one(
+            {"chat_id": chat.id},
+            {"$set": {"chat_id": chat.id, "title": chat.title}},
+            upsert=True
+        )
+        start_group_scheduler(context.application, chat.id)
+        print(f"[Bot] Added to {chat.title}")
 
-# --- Main function ---
+    # ❌ Bot removed
+    elif old_status in ["member", "administrator"] and new_status == "left":
+        groups.delete_one({"chat_id": chat.id})
+        stop_group_scheduler(chat.id)
+        print(f"[Bot] Removed from {chat.title}")
+
+
 def main():
-    try:
-        print("🚀 Bot is starting...")
-        init_db()  # Initialize database
-
-        # Build bot application
-        app = ApplicationBuilder().token(TOKEN).build()
-
-        # Attach other app-specific handlers
-        add_handlers(app)
-
-        # Register commands
-        app.add_handler(CommandHandler("start", start))
-        app.add_handler(CommandHandler("drop", manual_drop))
-        app.add_handler(CommandHandler("startdropping", start_dropping))
-
-        # Attach ChatMemberHandler to track groups automatically
-        app.add_handler(ChatMemberHandler(track_groups, chat_member_types=["my_chat_member"]))
-
-        print("✅ Handlers attached")
-        print("✅ Commands registered")
-        print("📡 Starting polling...")
-        app.run_polling()
-
-    except Exception as e:
-        import traceback
-        print("❌ Fatal error:", e)
-        traceback.print_exc()
+    app = Application.builder().token(BOT_TOKEN).build()
+    app.add_handler(ChatMemberHandler(handle_group_status, chat_member=True))
+    app.run_polling()
 
 
 if __name__ == "__main__":
