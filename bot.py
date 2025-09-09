@@ -8,12 +8,6 @@ from telegram.ext import (
     ContextTypes
 )
 from db.models import init_db, add_user
-from commands.waifulist import get_waifulist_handler
-from commands.collect import handle_collect
-from commands.harem import handle_harem
-from commands.info import handle_info
-from commands.leaderboard import handle_leaderboard
-from commands.upload import get_upload_handler
 from scheduler import start_scheduler, drop_waifu, add_handlers
 
 # Load environment variables
@@ -25,10 +19,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     chat = update.effective_chat
 
-    # Add user to DB
+    # Add user to database
     add_user(user.id, user.username)
 
-    # Send welcome message safely
+    # Safe welcome message
     chat_id = chat.id
     await context.bot.send_message(
         chat_id=chat_id,
@@ -38,7 +32,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Start scheduler for this group
     if chat.type in ["group", "supergroup"]:
         asyncio.create_task(start_scheduler(context.application, chat.id))
-        print(f"[INFO] Scheduler manually started in group {chat.id}")
+        print(f"[INFO] Scheduler started in group {chat.id}")
 
 # --- /drop command for manual testing ---
 async def manual_drop(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -50,23 +44,22 @@ async def manual_drop(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     try:
         print("🚀 Bot is starting...")
-        init_db()  # Initialize DB
+        init_db()  # Initialize database
 
-        # Build application
+        # Build bot application
         app = ApplicationBuilder().token(TOKEN).build()
 
-        # Add auto group tracking handlers
+        # Attach auto group tracking handlers
         add_handlers(app)
 
         # Register commands
         app.add_handler(CommandHandler("start", start))
-        app.add_handler(CommandHandler("grab", handle_collect))
-        app.add_handler(CommandHandler("harem", handle_harem))
-        app.add_handler(CommandHandler("info", handle_info))
-        app.add_handler(CommandHandler("top", handle_leaderboard))
         app.add_handler(CommandHandler("drop", manual_drop))
-        app.add_handler(get_waifulist_handler())
-        app.add_handler(get_upload_handler())
+        # Additional command handlers can be added later
+        # app.add_handler(CommandHandler("grab", handle_collect))
+        # app.add_handler(CommandHandler("harem", handle_harem))
+        # app.add_handler(CommandHandler("info", handle_info))
+        # app.add_handler(CommandHandler("top", handle_leaderboard))
 
         print("✅ Handlers attached")
         print("✅ Commands registered")
