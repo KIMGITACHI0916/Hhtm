@@ -71,4 +71,10 @@ def add_group(chat_id: int, title: str):
         {"$set": {"title": title}},
         upsert=True,
     )
+
+# ✅ Get all group IDs for /startdropping
+def get_all_group_ids():
+    """Return a list of all chat_ids for groups where bot is active."""
+    result = groups.find({}, {"chat_id": 1})
+    return [g["chat_id"] for g in result]
     
