@@ -1,66 +1,57 @@
 # scheduler.py
 import asyncio
-from utils.waifu_picker import pick_random_waifu
-from db.models import groups
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+from waifu_picker import pick_waifu  # 🔥 Import picker
 
-current_drop = {}      # chat_id -> waifu
-running_tasks = {}     # chat_id -> asyncio.Task
+# Shared scheduler (global)
+scheduler = AsyncIOScheduler()
 
-TEASER = "Ｃʜᴀʀᴀᴄᴛᴇʀ Ｄʀᴏᴘ Ｉɴᴄᴏᴍɪɴɢ！"
-DROP_MSG = (
-    "✨ 𝑨 𝑾𝒂𝒊𝒇𝒖 𝑨𝒑𝒑𝒆𝒂𝒓𝒆𝒅！✨\n"
-    "🪄 𝑮𝒓𝒂𝒃 𝒊𝒕 𝒘𝒊𝒕𝒉 /grab name\n"
-    "💥 𝑸𝒖𝒊𝒄𝒌！ 𝑶𝒕𝒉𝒆𝒓𝒔 𝒘𝒂𝒊𝒕𝒊𝒏𝒈..."
-)
-
-# --- Drop ek waifu ---
-async def drop_waifu(bot, chat_id):
+# --- Waifu Dropper ---
+async def drop_waifu(application, chat_id):
     try:
-        waifu = pick_random_waifu()
-        if not waifu:
-            return
-
-        current_drop[chat_id] = waifu
-        await bot.send_message(chat_id, TEASER)
-        await asyncio.sleep(10)
-
-        await bot.send_photo(
-            chat_id,
-            photo=waifu["image"],
-            caption=f"{DROP_MSG}\n\n🎨 {waifu['name']} ({waifu['rarity']})\n{waifu['desc']}"
+        chosen = pick_waifu()  # Get waifu from waifu_picker.py
+        await application.bot.send_message(
+            chat_id=chat_id,
+            text=f"💮 A wild **{chosen}** has appeared!"
         )
-
-        await asyncio.sleep(300)
-        if chat_id in current_drop:
-            await bot.send_message(chat_id, f"⏳ Time’s up! {waifu['name']} escaped…")
-            del current_drop[chat_id]
-
     except Exception as e:
-        print(f"[Drop Error] {chat_id}: {e}")
+        print(f"[ERROR] drop_waifu({chat_id}): {e}")
 
+# --- Start scheduler for a group ---
+async def start_scheduler(application, chat_id, interval=30, duration=300):
+    job_id = f"drop_{chat_id}"
 
-# --- Group scheduler loop ---
-async def group_scheduler(app, chat_id):
-    await asyncio.sleep(5)
-    while True:
-        await drop_waifu(app.bot, chat_id)
-        await asyncio.sleep(600)   # 10 min gap
-
-
-# --- Start scheduler for group ---
-def start_group_scheduler(app, chat_id):
-    if chat_id in running_tasks:  # already running
+    if scheduler.get_job(job_id):
+        print(f"[INFO] Scheduler already running for {chat_id}")
         return
-    task = asyncio.create_task(group_scheduler(app, chat_id))
-    running_tasks[chat_id] = task
-    print(f"[Scheduler] Started in {chat_id}")
 
+    scheduler.add_job(
+        drop_waifu,
+        IntervalTrigger(seconds=interval),
+        args=[application, chat_id],
+        id=job_id,
+        replace_existing=True,
+    )
+    print(f"[INFO] Scheduler started for {chat_id} every {interval}s")
 
-# --- Stop scheduler for group ---
-def stop_group_scheduler(chat_id):
-    task = running_tasks.get(chat_id)
-    if task:
-        task.cancel()
-        del running_tasks[chat_id]
-        print(f"[Scheduler] Stopped in {chat_id}")
+    async def auto_stop():
+        await asyncio.sleep(duration)
+        stop_scheduler(chat_id)
+
+    asyncio.create_task(auto_stop())
+
+# --- Stop scheduler for a group ---
+def stop_scheduler(chat_id):
+    job_id = f"drop_{chat_id}"
+    job = scheduler.get_job(job_id)
+    if job:
+        job.remove()
+        print(f"[INFO] Scheduler stopped for {chat_id}")
+
+# --- Start global scheduler ---
+def start_global_scheduler():
+    if not scheduler.running:
+        scheduler.start()
+        print("[INFO] Global scheduler started")
         
