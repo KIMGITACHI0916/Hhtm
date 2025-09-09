@@ -10,7 +10,8 @@ from telegram.ext import (
     ChatMemberHandler
 )
 from db.models import init_db, groups
-from scheduler import drop_waifu, start_scheduler
+from scheduler import drop_waifu, start_scheduler, start_scheduler, stop_scheduler, start_global_scheduler
+
 
 # --- Load env ---
 load_dotenv()
@@ -64,9 +65,10 @@ def main():
     # Track group join/leave
     app.add_handler(ChatMemberHandler(handle_group_status, chat_member_types=["my_chat_member"]))
 
+    # Start global scheduler
+    start_global_scheduler()
+
     print("📡 Bot running...")
     app.run_polling()
 
-if __name__ == "__main__":
-    main()
     
