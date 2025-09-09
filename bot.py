@@ -39,33 +39,43 @@ async def manual_drop(update, context):
 
 # --- Main function ---
 def main():
-    print("🚀 Bot is starting...")
-    init_db()
-    app = ApplicationBuilder().token(TOKEN).build()
+    try:
+        print("🚀 Bot is starting...")
+        init_db()
+        app = ApplicationBuilder().token(TOKEN).build()
 
-    # Attach auto group tracking
-    add_handlers(app)
+        # Attach auto group tracking
+        add_handlers(app)
 
-    # Commands
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("grab", handle_collect))
-    app.add_handler(CommandHandler("harem", handle_harem))
-    app.add_handler(CommandHandler("info", handle_info))
-    app.add_handler(CommandHandler("top", handle_leaderboard))
-    app.add_handler(CommandHandler("drop", manual_drop))
-    app.add_handler(get_waifulist_handler())
-    app.add_handler(get_upload_handler())
+        # Commands
+        app.add_handler(CommandHandler("start", start))
+        app.add_handler(CommandHandler("grab", handle_collect))
+        app.add_handler(CommandHandler("harem", handle_harem))
+        app.add_handler(CommandHandler("info", handle_info))
+        app.add_handler(CommandHandler("top", handle_leaderboard))
+        app.add_handler(CommandHandler("drop", manual_drop))
+        app.add_handler(get_waifulist_handler())
+        app.add_handler(get_upload_handler())
 
-    print("✅ Handlers attached")
-    print("✅ Commands registered")
+        print("✅ Handlers attached")
+        print("✅ Commands registered")
 
-    # 🚀 Hook scheduler after the bot is ready
-    async def post_init(application):
-        print("⚡ Scheduler starting...")
-        asyncio.create_task(start_scheduler(application))
+        # 🚀 Hook scheduler after the bot is ready
+        async def post_init(application):
+            print("⚡ Scheduler starting...")
+            asyncio.create_task(start_scheduler(application))
 
-    app.post_init = post_init
+        app.post_init = post_init
 
-    print("📡 Starting polling...")
-    app.run_polling()
-    
+        print("📡 Starting polling...")
+        app.run_polling()
+
+    except Exception as e:
+        import traceback
+        print("❌ Fatal error:", e)
+        traceback.print_exc()
+
+
+if __name__ == "__main__":
+    main()
+        
