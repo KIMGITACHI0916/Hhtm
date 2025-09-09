@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-MONGO_URI = os.getenv("MONGO_URI")  # 👈 Railway ke variable ka naam
+MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME = os.getenv("DB_NAME", "waifubot")
 
 # Connect to MongoDB Atlas with proper TLS
@@ -17,12 +17,14 @@ db = client[DB_NAME]
 users = db["users"]
 waifus = db["waifus"]
 active_drops = db["active_drops"]
+groups = db["groups"]  
 
 def init_db():
     """Create indexes if they don't exist"""
     users.create_index("user_id", unique=True)
     waifus.create_index("name")
     active_drops.create_index("chat_id", unique=True)
+    groups.create_index("chat_id", unique=True)  # ✅ index for groups
     print("[INFO] Database initialized.")
 
 # Add user safely
@@ -61,4 +63,12 @@ def get_leaderboard(limit: int = 10):
         {"$project": {"user_id": "$_id", "username": "$user_info.username", "total": 1}},
     ]
     return list(users.aggregate(pipeline))
+
+# ✅ Add group safely
+def add_group(chat_id: int, title: str):
+    groups.update_one(
+        {"chat_id": chat_id},
+        {"$set": {"title": title}},
+        upsert=True,
+    )
     
