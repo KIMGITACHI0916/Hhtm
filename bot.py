@@ -1,11 +1,9 @@
-
 # bot.py
 import os
-import asyncio
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from dotenv import load_dotenv
 from db.models import init_db, active_drops, add_waifu_to_harem
-from scheduler import drop_waifu, start_scheduler
+from scheduler import start_scheduler
 
 # Load .env
 load_dotenv()
@@ -32,34 +30,27 @@ async def grab(update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"{waifu_name} is not available!")
         return
 
-    # Add to user harem
     add_waifu_to_harem(user_id, waifu)
     await update.message.reply_text(f"🎉 You grabbed {waifu['name']}!")
-
-    # Remove from active drops
     active_drops.delete_one({"chat_id": update.effective_chat.id})
 
-async def main():
+# Post-init function to start the scheduler
+async def on_startup(app):
+    app.create_task(start_scheduler(app))
+
+def main():
     init_db()
     app = ApplicationBuilder().token(TOKEN).build()
 
-    # Add bot command handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("grab", grab))
 
-    # Start the scheduler as a background task inside the bot
-    app.create_task(start_scheduler(app))
+    # Use PTB post-init hook
+    app.post_init(on_startup)
 
     print("[INFO] Bot is running…")
-    await app.run_polling()
+    app.run_polling()
 
-# Entry point
 if __name__ == "__main__":
-    # Directly run main without wrapping in asyncio.run() if running in interactive/looped env
-    try:
-        asyncio.run(main())
-    except RuntimeError as e:
-        # Fallback if event loop is already running (like in Jupyter or certain Docker setups)
-        loop = asyncio.get_event_loop()
-        loop.create_task(main())
-        
+    main()
+    
