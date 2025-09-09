@@ -1,34 +1,55 @@
 # bot.py
-import asyncio
 import os
+import asyncio
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from dotenv import load_dotenv
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, ChatMemberHandler
-from db.models import init_db
-from scheduler import drop_waifu, start_scheduler, handle_group_status
+from db.models import init_db, users, active_drops
+from scheduler import drop_waifu, start_scheduler
 
+# Load .env
 load_dotenv()
-TOKEN = os.getenv("BOT_TOKEN")
+TOKEN = os.getenv("TOKEN")
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat = update.effective_chat
-    await context.bot.send_message(chat_id=chat.id, text="Welcome! Waifus will drop randomly!")
+async def start(update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Hello! Waifu bot is online.")
 
-async def drop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
-    await drop_waifu(context.application.bot, chat_id)
+async def grab(update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    args = context.args
+    if not args:
+        await update.message.reply_text("Usage: /grab <waifu_name>")
+        return
+
+    waifu_name = " ".join(args)
+    drop = active_drops.find_one({"chat_id": update.effective_chat.id})
+    if not drop:
+        await update.message.reply_text("No waifu to grab right now.")
+        return
+
+    waifu = drop["waifu"]
+    if waifu_name.lower() != waifu["name"].lower():
+        await update.message.reply_text(f"{waifu_name} is not available!")
+        return
+
+    # Add to user harem
+    from db.models import add_waifu_to_harem
+    add_waifu_to_harem(user_id, waifu)
+    await update.message.reply_text(f"🎉 You grabbed {waifu['name']}!")
+
+    # Remove from active drops
+    active_drops.delete_one({"chat_id": update.effective_chat.id})
 
 async def main():
     init_db()
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("drop", drop_command))
-    app.add_handler(ChatMemberHandler(handle_group_status, chat_member_types=["my_chat_member"]))
+    app.add_handler(CommandHandler("grab", grab))
 
-    # start global scheduler
+    # Start global scheduler
     asyncio.create_task(start_scheduler(app))
 
+    print("[INFO] Bot is running…")
     await app.run_polling()
 
 if __name__ == "__main__":
