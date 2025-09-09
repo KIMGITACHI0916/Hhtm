@@ -5,7 +5,8 @@ from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
-    ContextTypes
+    ContextTypes,
+    ChatMemberHandler
 )
 from db.models import init_db, add_user, add_group, get_all_group_ids
 from scheduler import start_scheduler, drop_waifu, add_handlers
@@ -23,9 +24,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     add_user(user.id, user.username)
 
     # Safe welcome message
-    chat_id = chat.id
     await context.bot.send_message(
-        chat_id=chat_id,
+        chat_id=chat.id,
         text="Welcome to WaifuBot! Waifus will drop randomly. Use /grab to collect them!"
     )
 
@@ -40,7 +40,7 @@ async def start_dropping(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
 
     # Fetch all group IDs from database
-    group_ids = get_all_group_ids()  # implement in db.models
+    group_ids = get_all_group_ids()
 
     if not group_ids:
         await context.bot.send_message(chat_id=chat_id, text="No groups found to start dropping.")
@@ -52,6 +52,16 @@ async def start_dropping(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(f"[INFO] Scheduler started in group {gid}")
 
     await context.bot.send_message(chat_id=chat_id, text="✅ Waifu dropping started in all groups!")
+
+# --- Auto-track groups when bot is added ---
+async def track_groups(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat = update.effective_chat
+    new_status = update.my_chat_member.new_chat_member.status
+
+    # If bot was added to a group
+    if new_status in ["member", "administrator"] and chat.type in ["group", "supergroup"]:
+        add_group(chat.id, chat.title)
+        print(f"[INFO] Bot added to group {chat.title} ({chat.id})")
 
 # --- Main function ---
 def main():
@@ -69,11 +79,9 @@ def main():
         app.add_handler(CommandHandler("start", start))
         app.add_handler(CommandHandler("drop", manual_drop))
         app.add_handler(CommandHandler("startdropping", start_dropping))
-        # Add other command handlers later:
-        # app.add_handler(CommandHandler("grab", handle_collect))
-        # app.add_handler(CommandHandler("harem", handle_harem))
-        # app.add_handler(CommandHandler("info", handle_info))
-        # app.add_handler(CommandHandler("top", handle_leaderboard))
+
+        # Attach ChatMember handler to automatically track groups
+        app.add_handler(ChatMemberHandler(track_groups, chat_member_types=["my_chat_member"]))
 
         print("✅ Handlers attached")
         print("✅ Commands registered")
@@ -92,4 +100,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
+        
