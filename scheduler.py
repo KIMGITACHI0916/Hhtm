@@ -35,7 +35,7 @@ async def drop_waifu(bot, chat_id):
         )
 
         # 5 min collect window
-        await asyncio.sleep(15)
+        await asyncio.sleep(60)
 
         # if not collected
         if chat_id in current_drop:
@@ -60,4 +60,4 @@ async def start_scheduler(app: Application, chat_id: int):
         await drop_waifu(app.bot, chat_id)
 
         # wait for next drop (10 min total interval)
-        await asyncio.sleep(15)  # (5 min window already used + 5 more min = 10 min cycle)
+        await asyncio.sleep(60)  # (5 min window already used + 5 more min = 10 min cycle)
