@@ -5,6 +5,16 @@ from db.models import add_waifu_to_harem, active_drops
 # Track grabbed waifus per chat to prevent duplicates
 collected = {}
 
+# Rarity → Emoji mapping
+RARITY_EMOJIS = {
+    "Common": "⚪",
+    "Uncommon": "🟢",
+    "Rare": "🟣",
+    "Legendary": "🟡",
+    "Special": "💮",
+    "Celestial": "🎐"
+}
+
 # --- Grab logic ---
 async def grab_waifu(chat_id, user, guess_name=None):
     """Handles the actual grab/collect logic for a chat and user."""
@@ -60,11 +70,15 @@ async def send_grab_result(update, result):
             if update.effective_user.username
             else update.effective_user.full_name
         )
+
+        rarity = waifu.get("rarity", "Unknown")
+        rarity_emoji = RARITY_EMOJIS.get(rarity, "")
+
         msg = (
             "🌸 𝑺𝒍𝒂𝒗𝒆 𝑪𝒐𝒍𝒍𝒆𝒄𝒕𝒊𝒐𝒏 𝑼𝒑𝒅𝒂𝒕𝒆 🌸\n\n"
             f"💖 Character: {waifu['name']}\n"
-            f"🎬 From: {waifu.get('desc', 'Unknown')}\n"
-            f"💎 Rarity: {waifu.get('rarity', 'Unknown')}\n"
+            f"🎬 From: {waifu.get('desc', 'Unknown').replace('From ', '')}\n"
+            f"💎 Rarity: {rarity} {rarity_emoji}\n"
             f"🆔 Id: {waifu['id']}\n\n"
             f"📖 Grabbed by ➝ {username}"
         )
@@ -94,5 +108,5 @@ def get_collect_handlers():
     return [
         CommandHandler(["grab", "collect"], handle_grab_command),  # both commands work
         MessageHandler(filters.TEXT & filters.ChatType.GROUPS, handle_group_message)  # plain text names
-            ]
+    ]
     
