@@ -72,11 +72,10 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("grab", grab))
     app.add_handler(get_upload_handler())
+
+    # FIXED: ab yeh line correctly indented hai
+    app.add_handler(MessageHandler(filters.ALL, auto_register_group))
     
-    # This will catch all messages in groups and auto-register them
-app.add_handler(MessageHandler(filters.ALL, auto_register_group))
-
-
     
     print("[INFO] Bot is running…")
     app.run_polling()
