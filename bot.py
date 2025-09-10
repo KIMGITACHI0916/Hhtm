@@ -33,10 +33,10 @@ async def grab(update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🎉 You grabbed {waifu['name']}!")
     active_drops.delete_one({"chat_id": update.effective_chat.id})
 
-# --- Startup task ---
-async def startup_task(application):
+# --- Post-init coroutine ---
+async def on_post_init(application):
     print("[INFO] Starting scheduler…")
-    await start_scheduler(application)
+    await start_scheduler(application)  # await the scheduler coroutine properly
 
 # --- Main ---
 def main():
@@ -46,16 +46,6 @@ def main():
     # Add handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("grab", grab))
-
-    # Schedule background task safely after app starts
-    async def on_post_init(_):
-        app.create_task(startup_task(app))
-
-    # Define post-init coroutine
-    async def on_post_init(_):
-        print("[INFO] Starting scheduler…")
-        app.create_task(start_scheduler(app))  # safe now
-        
 
     # Assign post-init coroutine
     app.post_init = on_post_init
