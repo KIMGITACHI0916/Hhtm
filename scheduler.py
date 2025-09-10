@@ -36,7 +36,7 @@ async def drop_waifu(bot, chat_id: int):
         await bot.send_photo(
             chat_id=chat_id,
             photo=waifu["image"],
-            caption=false
+            caption=DROP_MSG
         )
 
         # Wait 5 minutes for grabs
