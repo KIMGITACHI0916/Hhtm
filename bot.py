@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from db.models import init_db, add_waifu_to_harem, active_drops
 from scheduler import start_scheduler
+from commands.upload import get_upload_handler
+
 
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
@@ -56,7 +58,9 @@ def main():
     # Add handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("grab", grab))
+    app.add_handler(get_upload_handler())
 
+    
     print("[INFO] Bot is running…")
     app.run_polling()
 
