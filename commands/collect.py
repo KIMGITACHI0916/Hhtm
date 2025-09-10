@@ -1,42 +1,41 @@
+    # commands/collect.py
 from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters
 from db.models import add_waifu_to_harem, active_drops
+from scheduler import current_drop  # dict: chat_id -> active waifu
 
-# Track grabbed waifus per chat drop
-collected = {}  # chat_id -> set of waifu_ids
+# Track grabbed waifus per chat to prevent duplicates
+collected = {}
 
-# --- Grab logic ---
+# --- Core grab function ---
 async def grab_waifu(chat_id, user, guess_name=None):
-    # Check if drop exists for this chat
-    if chat_id not in active_drops.find_one({"chat_id": chat_id}):
+    if chat_id not in current_drop or not current_drop[chat_id].get("waifu"):
         return None  # no active waifu
 
-    drop = active_drops.find_one({"chat_id": chat_id})
-    waifu = drop["waifu"]
+    waifu = current_drop[chat_id]["waifu"]
     waifu_id = waifu["id"]
 
     # Initialize collected set for this chat
     if chat_id not in collected:
         collected[chat_id] = set()
 
-    # Already grabbed in this drop
+    # Already grabbed
     if waifu_id in collected[chat_id]:
         return "already"
 
-    # Name check if provided (partial allowed)
+    # Check name if provided
     if guess_name:
-        guess_name = guess_name.lower()
-        waifu_name = waifu["name"].lower()
-        if guess_name not in waifu_name:
+        guess_parts = guess_name.lower().split()
+        waifu_parts = waifu["name"].lower().split()
+        # partial match: any part of guess matches any part of waifu name
+        if not any(part in waifu_parts for part in guess_parts):
             return "wrong"
 
-    # Mark as collected for this drop
+    # Mark as collected
     collected[chat_id].add(waifu_id)
 
-    # Add to user's harem
+    # Add to DB
     add_waifu_to_harem(user.id, waifu)
-
-    # Remove active drop from DB
     active_drops.delete_one({"chat_id": chat_id})
 
     return waifu
@@ -55,41 +54,41 @@ async def handle_grab_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     elif result == "wrong":
         await update.message.reply_text("❌ Wrong name! Try again.")
     elif result:
+        # Success message
         waifu = result
         username = f"@{update.effective_user.username}" if update.effective_user.username else update.effective_user.full_name
         msg = (
             "🌸 𝑺𝒍𝒂𝒗𝒆 𝑪𝒐𝒍𝒍𝒆𝒄𝒕𝒊𝒐𝒏 𝑼𝒑𝒅𝒂𝒕𝒆 🌸\n\n"
-            f"💖 𝑪𝒉𝒂𝒓𝒂𝒄𝒕𝒆𝒓: {waifu['name']}\n"
-            f"🎬 𝑭𝒓𝒐𝒎: {waifu.get('desc', 'Unknown')}\n"
-            f"💎 𝑹𝒂𝒓𝒊𝒕𝒚: {waifu.get('rarity', 'Unknown')}\n"
-            f"🆔 𝑰𝒅: {waifu['id']}\n\n"
-            f"📖 𝑮𝒓𝒂𝒃𝒃𝒆𝒅 𝒃𝒚 ➝ {username}"
+            f"💖 Character: {waifu['name']}\n"
+            f"🎬 From: {waifu.get('desc', 'Unknown')}\n"
+            f"💎 Rarity: {waifu.get('rarity', 'Unknown')}\n"
+            f"🆔 Id: {waifu['id']}\n\n"
+            f"📖 Grabbed by ➝ {username}"
         )
         await update.message.reply_text(msg)
 
-# --- Generic message handler for typing waifu name ---
+# --- Handler for normal messages in groups ---
 async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     if not text or not update.effective_chat:
         return
 
     result = await grab_waifu(update.effective_chat.id, update.effective_user, text)
-    if result in ["already", "wrong", None]:
-        return
-
+    if result == "already" or result == "wrong" or result is None:
+        return  # ignore
     waifu = result
     username = f"@{update.effective_user.username}" if update.effective_user.username else update.effective_user.full_name
     msg = (
         "🌸 𝑺𝒍𝒂𝒗𝒆 𝑪𝒐𝒍𝒍𝒆𝒄𝒕𝒊𝒐𝒏 𝑼𝒑𝒅𝒂𝒕𝒆 🌸\n\n"
-        f"💖 𝑪𝒉𝒂𝒓𝒂𝒄𝒕𝒆𝒓: {waifu['name']}\n"
-        f"🎬 𝑭𝒓𝒐𝒎: {waifu.get('desc', 'Unknown')}\n"
-        f"💎 𝑹𝒂𝒓𝒊𝒕𝒚: {waifu.get('rarity', 'Unknown')}\n"
-        f"🆔 𝑰𝒅: {waifu['id']}\n\n"
-        f"📖 𝑮𝒓𝒂𝒃𝒃𝒆𝒅 𝒃𝒚 ➝ {username}"
+        f"💖 Character: {waifu['name']}\n"
+        f"🎬 From: {waifu.get('desc', 'Unknown')}\n"
+        f"💎 Rarity: {waifu.get('rarity', 'Unknown')}\n"
+        f"🆔 Id: {waifu['id']}\n\n"
+        f"📖 Grabbed by ➝ {username}"
     )
     await update.message.reply_text(msg)
 
-# --- Handlers list for bot.py ---
+# --- Return handlers for bot.py ---
 def get_collect_handlers():
     return [
         CommandHandler("grab", handle_grab_command),
