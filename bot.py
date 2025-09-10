@@ -5,6 +5,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes,  MessageHandler, filters
 from db.models import init_db, add_waifu_to_harem, active_drops, groups
 from scheduler import start_scheduler
+from group_manager import register_group
 from commands.upload import get_upload_handler
 
 
@@ -44,18 +45,6 @@ async def grab(update, context: ContextTypes.DEFAULT_TYPE):
 async def on_post_init(application):
     print("[INFO] Starting scheduler…")
     application.create_task(start_scheduler(application))  # background, not blocking
-
-
-# Auto register group whenever bot is added or message detected
-async def auto_register_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat = update.effective_chat
-    if chat and chat.type in ["group", "supergroup"]:
-        groups.update_one(
-            {"chat_id": chat.id},
-            {"$set": {"chat_id": chat.id, "title": chat.title}},
-            upsert=True
-        )
-        print(f"[INFO] Auto-registered group: {chat.title} ({chat.id})")
 
 
 # --- Main ---
