@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from db.models import init_db, add_waifu_to_harem, active_drops
 from scheduler import start_scheduler
-import asyncio
 
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
@@ -35,24 +34,23 @@ async def grab(update, context: ContextTypes.DEFAULT_TYPE):
     active_drops.delete_one({"chat_id": update.effective_chat.id})
 
 # --- Main ---
-async def main():
+def main():
     init_db()
-    app = ApplicationBuilder().token(TOKEN).build()
+    application = ApplicationBuilder().token(TOKEN).build()
 
     # Add handlers
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("grab", grab))
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("grab", grab))
 
-    # Start scheduler **after bot is running**
-    async def start_scheduler_task():
-        await asyncio.sleep(1)  # ensure loop is running
+    async def startup_task():
         print("[INFO] Starting scheduler…")
-        await start_scheduler(app)
+        await start_scheduler(application)
 
-    app.create_task(start_scheduler_task())
+    # Schedule the startup_task **after the bot initializes**
+    application.create_task(startup_task())
 
     print("[INFO] Bot is running…")
-    await app.run_polling()
+    application.run_polling()  # PTB manages the event loop
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
