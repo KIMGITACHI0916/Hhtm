@@ -56,10 +56,14 @@ async def drop_waifu(bot, chat_id: int):
 
 
 async def start_scheduler(app):
-    """Start dropping waifus in all groups every 10 minutes."""
     await asyncio.sleep(5)  # wait for bot to be ready
     while True:
         all_groups = list(groups.find({}))
+        
+        # DEBUG line
+        print(f"[DEBUG] Groups in DB: {[g['chat_id'] for g in all_groups]}")
+        
         for g in all_groups:
             asyncio.create_task(drop_waifu(app.bot, g["chat_id"]))
+        
         await asyncio.sleep(120)  # 10 min interval
