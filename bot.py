@@ -36,21 +36,23 @@ async def grab(update, context: ContextTypes.DEFAULT_TYPE):
 # --- Main ---
 def main():
     init_db()
-    application = ApplicationBuilder().token(TOKEN).build()
+    app = ApplicationBuilder().token(TOKEN).build()
 
     # Add handlers
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("grab", grab))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("grab", grab))
 
-    async def startup_task():
+    # Schedule the background task after the bot loop exists
+    async def scheduler_task_wrapper():
         print("[INFO] Starting scheduler…")
-        await start_scheduler(application)
+        await start_scheduler(app)
 
-    # Schedule the startup_task **after the bot initializes**
-    application.create_task(startup_task())
+    # Use the bot’s own loop
+    app.bot.loop.create_task(scheduler_task_wrapper())
 
     print("[INFO] Bot is running…")
-    application.run_polling()  # PTB manages the event loop
+    app.run_polling()
 
 if __name__ == "__main__":
     main()
+    
