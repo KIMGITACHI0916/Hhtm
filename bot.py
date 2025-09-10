@@ -36,7 +36,7 @@ async def grab(update, context: ContextTypes.DEFAULT_TYPE):
 # --- Post-init coroutine ---
 async def on_post_init(application):
     print("[INFO] Starting scheduler…")
-    await start_scheduler(application)  # await the scheduler coroutine properly
+    application.create_task(start_scheduler(application))  # ✅ run scheduler in background
 
 # --- Main ---
 def main():
@@ -51,7 +51,7 @@ def main():
     app.post_init = on_post_init
 
     print("[INFO] Bot is running…")
-    app.run_polling()
+    app.run_polling()  # ✅ this runs the bot
 
 if __name__ == "__main__":
     main()
