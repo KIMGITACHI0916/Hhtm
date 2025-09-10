@@ -1,44 +1,47 @@
-    # commands/collect.py
+# commands/collect.py
 from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters
 from db.models import add_waifu_to_harem, active_drops
-from scheduler import current_drop  # dict: chat_id -> active waifu
 
-# Track grabbed waifus per chat to prevent duplicates
+# Track grabbed waifus per chat drop
 collected = {}
 
-# --- Core grab function ---
+# --- Grab logic ---
 async def grab_waifu(chat_id, user, guess_name=None):
-    if chat_id not in current_drop or not current_drop[chat_id].get("waifu"):
-        return None  # no active waifu
+    # Check if waifu is active in this chat
+    drop = active_drops.find_one({"chat_id": chat_id})
+    if not drop or not drop.get("waifu"):
+        return None  # No active waifu
 
-    waifu = current_drop[chat_id]["waifu"]
+    waifu = drop["waifu"]
     waifu_id = waifu["id"]
 
-    # Initialize collected set for this chat
+    # Initialize collected set for this chat drop
     if chat_id not in collected:
         collected[chat_id] = set()
 
-    # Already grabbed
+    # Already grabbed in this drop?
     if waifu_id in collected[chat_id]:
         return "already"
 
-    # Check name if provided
+    # Name check (partial match allowed)
     if guess_name:
-        guess_parts = guess_name.lower().split()
-        waifu_parts = waifu["name"].lower().split()
-        # partial match: any part of guess matches any part of waifu name
-        if not any(part in waifu_parts for part in guess_parts):
+        guess_name = guess_name.lower()
+        waifu_name = waifu["name"].lower()
+        waifu_parts = waifu_name.split()
+        # Match if guess_name is substring of any part
+        if not any(guess_name in part for part in waifu_parts):
             return "wrong"
 
     # Mark as collected
     collected[chat_id].add(waifu_id)
 
-    # Add to DB
+    # Add to user harem
     add_waifu_to_harem(user.id, waifu)
     active_drops.delete_one({"chat_id": chat_id})
 
     return waifu
+
 
 # --- /grab command handler ---
 async def handle_grab_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -67,7 +70,8 @@ async def handle_grab_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         await update.message.reply_text(msg)
 
-# --- Handler for normal messages in groups ---
+
+# --- Generic message handler (just typing waifu name) ---
 async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     if not text or not update.effective_chat:
@@ -88,7 +92,8 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
     )
     await update.message.reply_text(msg)
 
-# --- Return handlers for bot.py ---
+
+# --- Handlers list for bot.py ---
 def get_collect_handlers():
     return [
         CommandHandler("grab", handle_grab_command),
