@@ -1,3 +1,4 @@
+# bot.py
 import os
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
@@ -7,9 +8,11 @@ from scheduler import start_scheduler
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
 
+
 # --- Handlers ---
 async def start(update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Hello! Waifu bot is online.")
+
 
 async def grab(update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -33,15 +36,22 @@ async def grab(update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🎉 You grabbed {waifu['name']}!")
     active_drops.delete_one({"chat_id": update.effective_chat.id})
 
-# --- Post-init coroutine (runs when loop is live) ---
-async def on_post_init(application):
+
+# --- Post-init (scheduler background task) ---
+async def on_post_init(app):
     print("[INFO] Starting scheduler…")
-    application.create_task(start_scheduler(application))  # safe now
+    app.create_task(start_scheduler(app))  # fire-and-forget, won’t block
+
 
 # --- Main ---
 def main():
     init_db()
-    app = ApplicationBuilder().token(TOKEN).post_init(on_post_init).build()
+    app = (
+        ApplicationBuilder()
+        .token(TOKEN)
+        .post_init(on_post_init)  # ensure scheduler starts after loop is live
+        .build()
+    )
 
     # Add handlers
     app.add_handler(CommandHandler("start", start))
@@ -49,6 +59,7 @@ def main():
 
     print("[INFO] Bot is running…")
     app.run_polling()
+
 
 if __name__ == "__main__":
     main()
