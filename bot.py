@@ -33,22 +33,21 @@ async def grab(update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🎉 You grabbed {waifu['name']}!")
     active_drops.delete_one({"chat_id": update.effective_chat.id})
 
-# --- Startup wrapper ---
+# --- Startup (sync) ---
 def on_startup(application):
     print("[INFO] Starting scheduler…")
-    # Schedule async scheduler task safely
-    application.create_task(start_scheduler(application))
+    application.create_task(start_scheduler(application))  # safe background task
 
 # --- Main ---
 def main():
     init_db()
     app = ApplicationBuilder().token(TOKEN).build()
 
-    # Add handlers
+    # Handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("grab", grab))
 
-    # Assign sync post-init callback
+    # Assign startup
     app.post_init = on_startup
 
     print("[INFO] Bot is running…")
