@@ -1,42 +1,44 @@
 from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters
-from scheduler import current_drop  # global dict: chat_id -> waifu
 from db.models import add_waifu_to_harem, active_drops
 
-# Track grabbed waifus per chat
-collected = {}
+# Track grabbed waifus per chat drop
+collected = {}  # chat_id -> set of waifu_ids
 
-# --- Grab logic (reusable) ---
+# --- Grab logic ---
 async def grab_waifu(chat_id, user, guess_name=None):
-    if chat_id not in current_drop or not current_drop[chat_id].get("waifu"):
+    # Check if drop exists for this chat
+    if chat_id not in active_drops.find_one({"chat_id": chat_id}):
         return None  # no active waifu
 
-    waifu = current_drop[chat_id]["waifu"]
+    drop = active_drops.find_one({"chat_id": chat_id})
+    waifu = drop["waifu"]
     waifu_id = waifu["id"]
 
     # Initialize collected set for this chat
     if chat_id not in collected:
         collected[chat_id] = set()
 
-    # Already grabbed
+    # Already grabbed in this drop
     if waifu_id in collected[chat_id]:
         return "already"
 
-    # Check name if provided
+    # Name check if provided (partial allowed)
     if guess_name:
         guess_name = guess_name.lower()
         waifu_name = waifu["name"].lower()
-        if guess_name not in waifu_name:  # partial match allowed
+        if guess_name not in waifu_name:
             return "wrong"
 
-    # Mark as collected
+    # Mark as collected for this drop
     collected[chat_id].add(waifu_id)
 
-    # Add to DB
+    # Add to user's harem
     add_waifu_to_harem(user.id, waifu)
+
+    # Remove active drop from DB
     active_drops.delete_one({"chat_id": chat_id})
 
-    # Return waifu for message
     return waifu
 
 # --- /grab command handler ---
@@ -53,7 +55,6 @@ async def handle_grab_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     elif result == "wrong":
         await update.message.reply_text("❌ Wrong name! Try again.")
     elif result:
-        # Success message
         waifu = result
         username = f"@{update.effective_user.username}" if update.effective_user.username else update.effective_user.full_name
         msg = (
@@ -73,8 +74,9 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     result = await grab_waifu(update.effective_chat.id, update.effective_user, text)
-    if result == "already" or result == "wrong" or result is None:
-        return  # ignore
+    if result in ["already", "wrong", None]:
+        return
+
     waifu = result
     username = f"@{update.effective_user.username}" if update.effective_user.username else update.effective_user.full_name
     msg = (
@@ -87,7 +89,7 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
     )
     await update.message.reply_text(msg)
 
-# --- Handlers for bot.py ---
+# --- Handlers list for bot.py ---
 def get_collect_handlers():
     return [
         CommandHandler("grab", handle_grab_command),
