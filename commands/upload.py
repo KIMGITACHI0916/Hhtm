@@ -1,3 +1,12 @@
+from telegram import Update
+from telegram.ext import ContextTypes, CommandHandler
+from db.models import waifus  # MongoDB collection
+import os
+import re
+
+# ✅ Owner ID from env
+OWNER_ID = int(os.getenv("OWNER_ID", "0"))
+
 async def upload_waifu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.effective_message  # works for text + captions
     user_id = update.effective_user.id
@@ -62,4 +71,7 @@ async def upload_waifu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await message.reply_text(
         f"✅ Added {name} | Rarity: {rarity} | ID: {waifu_id}"
     )
+
+def get_upload_handler():
+    return CommandHandler("upload", upload_waifu)
     
