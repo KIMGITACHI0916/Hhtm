@@ -7,6 +7,7 @@ from db.models import init_db, add_waifu_to_harem, active_drops, groups
 from scheduler import start_scheduler
 from group_manager import register_group
 from commands.upload import get_upload_handler
+from commands.groups import get_groups_handler
 
 
 load_dotenv()
@@ -61,6 +62,8 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("grab", grab))
     app.add_handler(get_upload_handler())
+    app.add_handler(get_groups_handler())
+    
 
     # FIXED: ab yeh line correctly indented hai
     app.add_handler(MessageHandler(filters.ALL, register_group))
