@@ -8,6 +8,7 @@ from scheduler import start_scheduler
 from group_manager import register_group
 from commands.upload import get_upload_handler
 from commands.groups import get_groups_handler
+from commands.collect import get_collect_handlers
 
 
 load_dotenv()
@@ -67,6 +68,10 @@ def main():
 
     # FIXED: ab yeh line correctly indented hai
     app.add_handler(MessageHandler(filters.ALL, register_group))
+
+    # Add handlers
+for h in get_collect_handlers():
+    app.add_handler(h)
     
     
     print("[INFO] Bot is running…")
