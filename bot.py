@@ -63,7 +63,7 @@ def main():
     app.add_handler(get_upload_handler())
 
     # FIXED: ab yeh line correctly indented hai
-    app.add_handler(MessageHandler(filters.ALL, auto_register_group))
+    app.add_handler(MessageHandler(filters.ALL, register_group))
     
     
     print("[INFO] Bot is running…")
