@@ -51,6 +51,12 @@ def main():
     async def on_post_init(_):
         app.create_task(startup_task(app))
 
+    # Define post-init coroutine
+    async def on_post_init(_):
+        print("[INFO] Starting scheduler…")
+        app.create_task(start_scheduler(app))  # safe now
+        
+
     # Assign post-init coroutine
     app.post_init = on_post_init
 
