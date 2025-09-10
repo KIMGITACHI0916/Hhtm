@@ -3,45 +3,44 @@ from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters
 from db.models import add_waifu_to_harem, active_drops
 
-# Track grabbed waifus per chat drop
+# Track grabbed waifus per chat to prevent duplicates
 collected = {}
 
 # --- Grab logic ---
 async def grab_waifu(chat_id, user, guess_name=None):
-    # Check if waifu is active in this chat
+    """Handles the actual grab logic for a chat and user."""
     drop = active_drops.find_one({"chat_id": chat_id})
-    if not drop or not drop.get("waifu"):
-        return None  # No active waifu
+    if not drop or "waifu" not in drop:
+        return None  # no active waifu
 
     waifu = drop["waifu"]
     waifu_id = waifu["id"]
 
-    # Initialize collected set for this chat drop
+    # Initialize collected set for this chat
     if chat_id not in collected:
         collected[chat_id] = set()
 
-    # Already grabbed in this drop?
+    # Already grabbed in this chat?
     if waifu_id in collected[chat_id]:
         return "already"
 
-    # Name check (partial match allowed)
+    # Check name if provided
     if guess_name:
-        guess_name = guess_name.lower()
-        waifu_name = waifu["name"].lower()
-        waifu_parts = waifu_name.split()
-        # Match if guess_name is substring of any part
-        if not any(guess_name in part for part in waifu_parts):
+        guess_name = guess_name.lower().strip()
+        waifu_name_parts = waifu["name"].lower().split()
+        if guess_name not in waifu_name_parts and guess_name != waifu["name"].lower():
             return "wrong"
 
     # Mark as collected
     collected[chat_id].add(waifu_id)
 
-    # Add to user harem
+    # Add to user's harem
     add_waifu_to_harem(user.id, waifu)
+
+    # Remove active drop
     active_drops.delete_one({"chat_id": chat_id})
 
     return waifu
-
 
 # --- /grab command handler ---
 async def handle_grab_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -57,7 +56,6 @@ async def handle_grab_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     elif result == "wrong":
         await update.message.reply_text("❌ Wrong name! Try again.")
     elif result:
-        # Success message
         waifu = result
         username = f"@{update.effective_user.username}" if update.effective_user.username else update.effective_user.full_name
         msg = (
@@ -70,8 +68,7 @@ async def handle_grab_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         await update.message.reply_text(msg)
 
-
-# --- Generic message handler (just typing waifu name) ---
+# --- Generic message handler for typing waifu name ---
 async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     if not text or not update.effective_chat:
@@ -92,8 +89,7 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
     )
     await update.message.reply_text(msg)
 
-
-# --- Handlers list for bot.py ---
+# --- Function to register handlers in bot.py ---
 def get_collect_handlers():
     return [
         CommandHandler("grab", handle_grab_command),
