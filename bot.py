@@ -22,7 +22,7 @@ async def grab(update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     waifu_name = " ".join(args)
-    drop = active_drops.find_one({"chat_id": update.effective_chat.id})
+    drop = active_drops.find_one({"chat_id": update.message.chat.id})
     if not drop:
         await update.message.reply_text("No waifu to grab right now.")
         return
@@ -34,13 +34,13 @@ async def grab(update, context: ContextTypes.DEFAULT_TYPE):
 
     add_waifu_to_harem(user_id, waifu)
     await update.message.reply_text(f"🎉 You grabbed {waifu['name']}!")
-    active_drops.delete_one({"chat_id": update.effective_chat.id})
+    active_drops.delete_one({"chat_id": update.message.chat.id})
 
 
-# --- Post-init (scheduler awaited) ---
+# --- Post-init (scheduler runs in background) ---
 async def on_post_init(application):
     print("[INFO] Starting scheduler…")
-    await start_scheduler(application)  # blocks here but runs forever
+    application.create_task(start_scheduler(application))  # background, not blocking
 
 
 # --- Main ---
