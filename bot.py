@@ -33,6 +33,11 @@ async def grab(update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🎉 You grabbed {waifu['name']}!")
     active_drops.delete_one({"chat_id": update.effective_chat.id})
 
+# --- Startup task ---
+async def startup_task(application):
+    print("[INFO] Starting scheduler…")
+    await start_scheduler(application)
+
 # --- Main ---
 def main():
     init_db()
@@ -42,13 +47,12 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("grab", grab))
 
-    # Schedule the background task after the bot loop exists
-    async def scheduler_task_wrapper():
-        print("[INFO] Starting scheduler…")
-        await start_scheduler(app)
+    # Schedule background task safely after app starts
+    async def on_post_init(_):
+        app.create_task(startup_task(app))
 
-    # Use the bot’s own loop
-    app.bot.loop.create_task(scheduler_task_wrapper())
+    # Assign post-init coroutine
+    app.post_init = on_post_init
 
     print("[INFO] Bot is running…")
     app.run_polling()
