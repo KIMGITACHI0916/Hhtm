@@ -2,13 +2,13 @@
 import os
 from dotenv import load_dotenv
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes,  MessageHandler, filters
-from db.models import init_db, add_waifu_to_harem, active_drops, groups
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
+from db.models import init_db
 from scheduler import start_scheduler
 from group_manager import register_group
 from commands.upload import get_upload_handler
 from commands.groups import get_groups_handler
-from commands.collect import get_collect_handlers
+from commands.collect import get_collect_handlers  # <-- collect.py handles /grab and messages
 
 
 load_dotenv()
@@ -20,33 +20,10 @@ async def start(update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Hello! Waifu bot is online.")
 
 
-async def grab(update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    args = context.args
-    if not args:
-        await update.message.reply_text("Usage: /grab <waifu_name>")
-        return
-
-    waifu_name = " ".join(args)
-    drop = active_drops.find_one({"chat_id": update.message.chat.id})
-    if not drop:
-        await update.message.reply_text("No waifu to grab right now.")
-        return
-
-    waifu = drop["waifu"]
-    if waifu_name.lower() != waifu["name"].lower():
-        await update.message.reply_text(f"{waifu_name} is not available!")
-        return
-
-    add_waifu_to_harem(user_id, waifu)
-    await update.message.reply_text(f"🎉 You grabbed {waifu['name']}!")
-    active_drops.delete_one({"chat_id": update.message.chat.id})
-
-
 # --- Post-init (scheduler runs in background) ---
 async def on_post_init(application):
     print("[INFO] Starting scheduler…")
-    application.create_task(start_scheduler(application))  # background, not blocking
+    application.create_task(start_scheduler(application))  # background, non-blocking
 
 
 # --- Main ---
@@ -59,20 +36,18 @@ def main():
         .build()
     )
 
-    # Add handlers
+    # --- Bot Handlers ---
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("grab", grab))
     app.add_handler(get_upload_handler())
     app.add_handler(get_groups_handler())
-    
 
-    # FIXED: ab yeh line correctly indented hai
+    # Auto-register groups
     app.add_handler(MessageHandler(filters.ALL, register_group))
 
-    # Add collect handlers
+    # Collect.py handles /grab and normal waifu name messages
     for h in get_collect_handlers():
         app.add_handler(h)
-    
+
     print("[INFO] Bot is running…")
     app.run_polling()
 
