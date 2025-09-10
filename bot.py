@@ -56,6 +56,7 @@ def main():
     # Add handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("grab", grab))
+    app.add_handler(CommandHandler("upload", upload))
 
     print("[INFO] Bot is running…")
     app.run_polling()
