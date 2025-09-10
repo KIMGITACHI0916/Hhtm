@@ -37,10 +37,10 @@ async def grab(update, context: ContextTypes.DEFAULT_TYPE):
     active_drops.delete_one({"chat_id": update.effective_chat.id})
 
 
-# --- Post-init (scheduler background task) ---
-async def on_post_init(app):
+# --- Post-init (scheduler awaited) ---
+async def on_post_init(application):
     print("[INFO] Starting scheduler…")
-    app.create_task(start_scheduler(app))  # fire-and-forget, won’t block
+    await start_scheduler(application)  # blocks here but runs forever
 
 
 # --- Main ---
@@ -49,7 +49,7 @@ def main():
     app = (
         ApplicationBuilder()
         .token(TOKEN)
-        .post_init(on_post_init)  # ensure scheduler starts after loop is live
+        .post_init(on_post_init)  # scheduler starts after bot init
         .build()
     )
 
