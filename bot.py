@@ -1,4 +1,3 @@
-#Bot.py
 import os
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
@@ -34,10 +33,10 @@ async def grab(update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🎉 You grabbed {waifu['name']}!")
     active_drops.delete_one({"chat_id": update.effective_chat.id})
 
-# --- Startup task ---
-async def on_startup(application):
+# --- Startup wrapper ---
+def on_startup(application):
     print("[INFO] Starting scheduler…")
-    # Create the scheduler task after bot is fully initialized
+    # Schedule async scheduler task safely
     application.create_task(start_scheduler(application))
 
 # --- Main ---
@@ -49,10 +48,10 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("grab", grab))
 
-    # Assign post-init coroutine
+    # Assign sync post-init callback
     app.post_init = on_startup
 
-    # Run the bot (manages its own event loop)
+    print("[INFO] Bot is running…")
     app.run_polling()
 
 if __name__ == "__main__":
