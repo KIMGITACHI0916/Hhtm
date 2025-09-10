@@ -69,10 +69,9 @@ def main():
     # FIXED: ab yeh line correctly indented hai
     app.add_handler(MessageHandler(filters.ALL, register_group))
 
-    # Add handlers
-for h in get_collect_handlers():
-    app.add_handler(h)
-    
+    # Add collect handlers
+    for h in get_collect_handlers():
+        app.add_handler(h)
     
     print("[INFO] Bot is running…")
     app.run_polling()
