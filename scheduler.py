@@ -36,11 +36,11 @@ async def drop_waifu(bot, chat_id: int):
         await bot.send_photo(
             chat_id=chat_id,
             photo=waifu["image"],
-            caption=f"{DROP_MSG}\n\n🎨 {waifu['name']} ({waifu['rarity']})\n{waifu['desc']}"
+            caption=false
         )
 
         # Wait 5 minutes for grabs
-        await asyncio.sleep(300)
+        await asyncio.sleep(60)
 
         # Check if still active
         drop = active_drops.find_one({"chat_id": chat_id})
@@ -62,4 +62,4 @@ async def start_scheduler(app):
         all_groups = list(groups.find({}))
         for g in all_groups:
             asyncio.create_task(drop_waifu(app.bot, g["chat_id"]))
-        await asyncio.sleep(600)  # 10 min interval
+        await asyncio.sleep(120)  # 10 min interval
