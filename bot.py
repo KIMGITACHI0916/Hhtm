@@ -36,6 +36,7 @@ async def grab(update, context: ContextTypes.DEFAULT_TYPE):
 # --- Startup task ---
 async def on_startup(application):
     print("[INFO] Starting scheduler…")
+    # Create the scheduler task after bot is fully initialized
     application.create_task(start_scheduler(application))
 
 # --- Main ---
