@@ -45,15 +45,13 @@ def main():
         app.add_handler(h)
 
     # ✅ Grab/Collect handlers
-    app.add_handler(CommandHandler(["grab", "collect"], handle_grab_command))
+    app.add_handler(CommandHandler(["grab", "collect"], handle_grab_command)) 
     app.add_handler(MessageHandler(filters.TEXT & (filters.ChatType.GROUPS | filters.ChatType.SUPERGROUP), handle_group_message))
-
-
+    
     # --- Harem/Collection handlers ---
     for handler in get_harem_handlers():
         app.add_handler(handler)
         
-
     
     # ✅ Register group handler last (so it doesn’t block others)
     app.add_handler(MessageHandler(filters.ALL, register_group))
