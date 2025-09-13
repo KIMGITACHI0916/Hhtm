@@ -9,6 +9,7 @@ from group_manager import register_group
 from commands.upload import get_upload_handler
 from commands.groups import get_groups_handler
 from commands.collect import handle_grab_command, handle_group_message  # direct import
+from commands.economy import get_economy_handlers  # ✅ new import
 
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
@@ -37,7 +38,11 @@ def main():
     app.add_handler(get_upload_handler())
     app.add_handler(get_groups_handler())
 
-    # ✅ Grab/Collect handlers first (important)
+    # ✅ Economy handlers
+    for h in get_economy_handlers():
+        app.add_handler(h)
+
+    # ✅ Grab/Collect handlers
     app.add_handler(CommandHandler(["grab", "collect"], handle_grab_command))
     app.add_handler(MessageHandler(filters.TEXT & (filters.ChatType.GROUPS | filters.ChatType.SUPERGROUP), handle_group_message))
 
