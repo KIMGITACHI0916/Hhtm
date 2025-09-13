@@ -70,6 +70,11 @@ def get_harem(user_id: int):
 
     return harem
 
+
+# Alias for backwards compatibility
+get_user_harem = get_harem
+
+
 # ----------------- FAVORITE -----------------
 
 def set_favorite(user_id: int, waifu_id: int) -> bool:
