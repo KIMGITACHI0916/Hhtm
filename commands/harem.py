@@ -41,7 +41,7 @@ def format_harem(harem, page: int = 1):
         text += "-------------------\n"
         for w in chars:
             rarity = w.get("rarity", "Unknown")
-            emoji = RARITY_EMOJI.get(rarity, "❔")
+            emoji = RARITY_EMOJIS.get(rarity, "❔")   # ✅ fixed
             text += f"↳ {w['id']} | {emoji} {w['name']} x{w.get('count', 1)}\n"
         text += "-------------------\n"
 
