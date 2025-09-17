@@ -1,112 +1,79 @@
 from telegram import (
-    Update,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     InlineQueryResultPhoto,
+    Update,
 )
 from telegram.ext import (
+    ContextTypes,
     CommandHandler,
     CallbackQueryHandler,
     InlineQueryHandler,
-    ContextTypes,
 )
-from db.models import get_user_harem
-import math
+import re
 
-
-# Rarity Emojis
-RARITY_EMOJIS = {
-    "Common": "⚪",
-    "Uncommon": "🟢",
-    "Rare": "🟣",
-    "Legendary": "🟡",
-    "Special": "💮",
-    "Limited": "🔮",
-    "Celestial": "🎐",
-    "Valentine": "💖",
-    "Winter": "❄️",
-    "AMV": "💌",
+# Fake DB (replace with real DB)
+USER_HAREMS = {
+    123456789: [  # Example user_id
+        {"name": "Tengen Uzui", "rarity": "Legendary", "image": "https://i.imgur.com/abcd1.jpg"},
+        {"name": "Nezuko Kamado", "rarity": "Rare", "image": "https://i.imgur.com/abcd2.jpg"},
+        {"name": "Shinobu Kocho", "rarity": "Uncommon", "image": "https://i.imgur.com/abcd3.jpg"},
+    ]
 }
 
 
-# ---------------- COMMAND ----------------
-async def show_harem(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Show menu with buttons that trigger inline query."""
+# /harem command
+async def harem_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-
-    buttons = [
+    keyboard = [
         [
             InlineKeyboardButton(
                 "📸 Collection",
-                switch_inline_query_current_chat=f"user_slaves.{user_id}",
+                switch_inline_query_current_chat=f"user_slaves.{user_id}"
             ),
             InlineKeyboardButton(
                 "💌 AMV",
-                switch_inline_query_current_chat=f"amv.{user_id}",
+                switch_inline_query_current_chat=f"amv.{user_id}"
             ),
         ]
     ]
-    kb = InlineKeyboardMarkup(buttons)
-    await update.message.reply_text("🌸 𝑺𝒍𝒂𝒗𝒆 𝑯𝒂𝒓𝒆𝒎 🌸\nChoose an option:", reply_markup=kb)
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_text(
+        "🌸 *Slave Harem* 🌸\nChoose an option:",
+        reply_markup=reply_markup,
+        parse_mode="Markdown"
+    )
 
 
-# ---------------- INLINE QUERY ----------------
-async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Show harem as gallery when user types inline query."""
+# Inline query (for gallery)
+async def harem_inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.inline_query.query
-
-    if not query.startswith(("user_slaves.", "amv.")):
-        return
-
-    # Extract user id
-    try:
-        user_id = int(query.split(".")[1])
-    except:
-        return
-
-    harem = get_user_harem(user_id)
-    if not harem:
-        await update.inline_query.answer([])
-        return
-
-    # Filter AMV if needed
-    if query.startswith("amv."):
-        harem = [w for w in harem if w.get("rarity") == "AMV"]
+    user_id_match = re.match(r"user_slaves\.(\d+)", query)
 
     results = []
-    for idx, w in enumerate(harem[:50]):  # Telegram inline query has a 50-item limit
-        rarity = w.get("rarity", "Unknown")
-        emoji = RARITY_EMOJIS.get(rarity, "❔")
-        caption = (
-            f"✨ {w.get('name','Unknown')}\n"
-            f"{emoji} Rarity: {rarity}\n"
-            f"📦 Count: {w.get('count',1)}\n"
-            f"🎭 Source: {w.get('desc','Unknown')}"
-        )
 
-        image_url = (
-            w.get("image_url")
-            or w.get("image")
-            or w.get("url")
-            or "https://via.placeholder.com/300x400.png?text=No+Image"
-        )
+    if user_id_match:
+        user_id = int(user_id_match.group(1))
+        harem = USER_HAREMS.get(user_id, [])
 
-        results.append(
-            InlineQueryResultPhoto(
-                id=str(idx),
-                photo_url=image_url,
-                thumb_url=image_url,
-                caption=caption,
+        for idx, char in enumerate(harem):
+            results.append(
+                InlineQueryResultPhoto(
+                    id=str(idx),
+                    photo_url=char["image"],
+                    thumb_url=char["image"],
+                    title=char["name"],
+                    description=f"{char['rarity']} character",
+                    caption=f"✨ {char['name']} | {char['rarity']} ✨"
+                )
             )
-        )
 
-    await update.inline_query.answer(results, cache_time=1)
+    await update.inline_query.answer(results, cache_time=0, is_personal=True)
 
 
-# ---------------- HANDLERS ----------------
-def get_harem_handlers():
-    return [
-        CommandHandler(["harem", "collection"], show_harem),
-        InlineQueryHandler(inline_query),
-    ]
-    
+# Register handlers
+def register_handlers(app):
+    app.add_handler(CommandHandler("harem", harem_command))
+    app.add_handler(InlineQueryHandler(harem_inline_query))
+                                                  
