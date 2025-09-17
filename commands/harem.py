@@ -4,8 +4,8 @@ from db.models import get_user_harem
 from collections import defaultdict
 import math
 
-ITEMS_PER_PAGE = 5   # for list view
-GALLERY_PAGE_SIZE = 20  # images per gallery page
+ITEMS_PER_PAGE = 5       # For list view
+GALLERY_PAGE_SIZE = 20   # Images per gallery page
 
 # Rarity Emojis
 RARITY_EMOJIS = {
@@ -20,7 +20,6 @@ RARITY_EMOJIS = {
     "Winter": "❄️",
     "AMV": "💌",
 }
-
 
 # ---------------- TEXT MODE ----------------
 def format_harem(harem, page: int = 1):
@@ -61,7 +60,6 @@ def format_harem(harem, page: int = 1):
         ]
     ]
     return text, InlineKeyboardMarkup(buttons)
-
 
 # ---------------- GALLERY MODE ----------------
 async def show_gallery(update: Update, context: ContextTypes.DEFAULT_TYPE, page: int, filter_rarity=None):
@@ -112,9 +110,8 @@ async def show_gallery(update: Update, context: ContextTypes.DEFAULT_TYPE, page:
             reply_markup=InlineKeyboardMarkup(buttons)
         )
     except:
-        # Fallback: send as new message (useful if same media re-edit fails)
+        # Fallback: send as new message (in case same media re-edit fails)
         await query.message.reply_photo(photo=first["image_url"], caption=caption, reply_markup=InlineKeyboardMarkup(buttons))
-
 
 # ---------------- HANDLERS ----------------
 async def show_harem(update: Update, context: ContextTypes.DEFAULT_TYPE, page: int = 1):
@@ -127,7 +124,6 @@ async def show_harem(update: Update, context: ContextTypes.DEFAULT_TYPE, page: i
 
     text, kb = format_harem(harem, page)
     await update.message.reply_text(text, reply_markup=kb)
-
 
 async def harem_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -152,7 +148,7 @@ async def harem_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         page = int(data[1]) if len(data) > 1 else 1
         await show_gallery(update, context, page, filter_rarity="AMV")
 
-
+# Register handlers
 def get_harem_handlers():
     return [
         CommandHandler(["harem", "collection"], show_harem),
