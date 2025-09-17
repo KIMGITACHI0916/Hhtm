@@ -21,6 +21,7 @@ RARITY_EMOJIS = {
     "AMV": "💌",
 }
 
+
 # ---------------- TEXT MODE ----------------
 def format_harem(harem, page: int = 1):
     grouped = defaultdict(list)
@@ -64,11 +65,12 @@ def format_harem(harem, page: int = 1):
 
 # ---------------- GALLERY MODE ----------------
 async def show_gallery(update: Update, context: ContextTypes.DEFAULT_TYPE, page: int, filter_rarity=None):
-    user_id = update.effective_user.id
+    query = update.callback_query
+    user_id = query.from_user.id
     harem = get_user_harem(user_id)
 
     if not harem:
-        await update.callback_query.edit_message_text("📭 Your harem is empty!")
+        await query.edit_message_text("📭 Your harem is empty!")
         return
 
     # Filter items
@@ -84,12 +86,15 @@ async def show_gallery(update: Update, context: ContextTypes.DEFAULT_TYPE, page:
     end = start + GALLERY_PAGE_SIZE
     selected = filtered[start:end]
 
-    media = []
-    for w in selected:
-        if "image_url" in w:
-            media.append(InputMediaPhoto(media=w["image_url"], caption=w.get("name", "")))
+    if not selected:
+        await query.edit_message_text("⚠ No images found.")
+        return
 
-    # prefix for pagination
+    # Show only the first image + caption
+    first = selected[0]
+    caption = f"{first.get('name','Unknown')} | {first.get('rarity','❔')}"
+    media = InputMediaPhoto(media=first["image_url"], caption=caption)
+
     prefix = "amv" if filter_rarity == "AMV" else "collection"
 
     buttons = [
@@ -101,13 +106,14 @@ async def show_gallery(update: Update, context: ContextTypes.DEFAULT_TYPE, page:
         [InlineKeyboardButton("📜 Back to list", callback_data="harem:1")]
     ]
 
-    if media:
-        await update.callback_query.edit_message_media(
-            media=media[0],  # first item visible
+    try:
+        await query.edit_message_media(
+            media=media,
             reply_markup=InlineKeyboardMarkup(buttons)
         )
-    else:
-        await update.callback_query.edit_message_text("⚠ No images found.", reply_markup=InlineKeyboardMarkup(buttons))
+    except:
+        # Fallback: send as new message (useful if same media re-edit fails)
+        await query.message.reply_photo(photo=first["image_url"], caption=caption, reply_markup=InlineKeyboardMarkup(buttons))
 
 
 # ---------------- HANDLERS ----------------
